@@ -106,6 +106,11 @@ struct ContentView: View {
                         Image(systemName: "ladybug")
                     }
                     .help("Debug Réseau")
+                    
+                    Button(action: { CLIWindowManager.shared.toggle() }) {
+                        Image(systemName: "terminal")
+                    }
+                    .help("Terminal JS")
                     Spacer()
                 }
                 .padding(.bottom, 4)
@@ -469,6 +474,112 @@ class HelpWindowManager {
     }
 }
 
+struct CLIView: View {
+    @State private var input: String = ""
+    @State private var log: [CLILine] = []
+    
+    struct CLILine: Identifiable {
+        let id = UUID()
+        let text: String
+        let isResponse: Bool
+    }
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 4) {
+                        ForEach(log) { line in
+                            Text(line.isResponse ? "← \(line.text)" : "→ \(line.text)")
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundColor(line.isResponse ? .blue : .primary)
+                                .textSelection(.enabled)
+                        }
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .id("bottom")
+                }
+                .onChange(of: log.count) { _ in
+                    proxy.scrollTo("bottom", anchor: .bottom)
+                }
+            }
+            .background(Color.black.opacity(0.05))
+            
+            Divider()
+            
+            HStack {
+                Text(">")
+                    .font(.system(.body, design: .monospaced))
+                    .bold()
+                TextField("Commande JS...", text: $input)
+                    .textFieldStyle(.plain)
+                    .font(.system(.body, design: .monospaced))
+                    .onSubmit {
+                        sendCommand()
+                    }
+            }
+            .padding()
+        }
+        .frame(minWidth: 500, minHeight: 300)
+    }
+    
+    func sendCommand() {
+        let command = input
+        guard !command.isEmpty else { return }
+        
+        log.append(CLILine(text: command, isResponse: false))
+        input = ""
+        
+        guard let url = URL(string: "http://localhost:8080/js") else { return }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.httpBody = command.data(using: .utf8)
+        
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            DispatchQueue.main.async {
+                if let error = error {
+                    log.append(CLILine(text: "Error: \(error.localizedDescription)", isResponse: true))
+                } else if let data = data, let responseStr = String(data: data, encoding: .utf8) {
+                    log.append(CLILine(text: responseStr, isResponse: true))
+                }
+            }
+        }.resume()
+    }
+}
+
+class CLIWindowManager {
+    static let shared = CLIWindowManager()
+    private var window: NSPanel?
+    
+    func toggle() {
+        if let window = window, window.isVisible {
+            window.orderOut(nil)
+        } else {
+            open()
+        }
+    }
+    
+    func open() {
+        if window == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 300, y: 300, width: 600, height: 400),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Terminal JS"
+            panel.isFloatingPanel = true
+            panel.level = .floating
+            panel.contentView = NSHostingView(rootView: CLIView())
+            panel.center()
+            panel.setFrameAutosaveName("CLIWindow")
+            panel.isReleasedWhenClosed = false
+            self.window = panel
+        }
+        window?.makeKeyAndOrderFront(nil)
+    }
+}
 struct DebugView: View {
     @ObservedObject var commandLog = CommandLog.shared
     
