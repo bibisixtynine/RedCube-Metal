@@ -105,6 +105,13 @@ struct ContentView: View {
             .background(Color(NSColor.windowBackgroundColor))
         }
         .onAppear {
+            // Save/Restore main window position
+            DispatchQueue.main.async {
+                if let window = NSApplication.shared.windows.first {
+                    window.setFrameAutosaveName("MainWindow")
+                }
+            }
+            
             if !hasInitialized {
                 loadInitialCode()
                 hasInitialized = true
@@ -345,6 +352,8 @@ class HelpWindowManager {
             panel.level = .floating
             panel.contentView = NSHostingView(rootView: HelpView())
             panel.center()
+            panel.setFrameAutosaveName("HelpWindow")
+            panel.isReleasedWhenClosed = false
             self.window = panel
         }
         window?.makeKeyAndOrderFront(nil)
