@@ -569,7 +569,25 @@ struct CLIView: View {
             }
             .background(Color.black.opacity(0.05))
             
-            if !suggestions.isEmpty {
+            if let help = currentHelp {
+                Divider()
+                HStack {
+                    Text("ℹ️ \(help)")
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal)
+                        .padding(.vertical, 4)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    Button(action: { currentHelp = nil }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.trailing, 8)
+                }
+                .transition(.opacity)
+            } else if !suggestions.isEmpty {
                 Divider()
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
@@ -617,22 +635,42 @@ struct CLIView: View {
     @State private var historyIndex: Int = -1
     @State private var tempInput: String = ""
     @State private var suggestions: [String] = []
+    @State private var currentHelp: String? = nil
     
     let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log"]
+    
+    let jsFunctionHelp: [String: String] = [
+        "spawn": "spawn(type, x, y, z) - Spawns a 3D object ('cube', 'sphere', 'cone', 'text')",
+        "setPosition": "setPosition(id, x, y, z) - Sets the position of an entity",
+        "setRotation": "setRotation(id, x, y, z) - Sets the rotation in degrees",
+        "setScale": "setScale(id, x, y, z) - Sets the scale",
+        "setColor": "setColor(id, r, g, b, a) - Sets the color (RGBA 0.0-1.0)",
+        "remove": "remove(id) - Removes an entity",
+        "setCamera": "setCamera(x, y, z, lookAtX, lookAtY, lookAtZ) - Moves the camera",
+        "setPhysics": "setPhysics(id, mass, restitution, friction) - Sets physics properties",
+        "setTexture": "setTexture(id, path) - Sets an image texture from a file path",
+        "requestAnimationFrame": "requestAnimationFrame(callback) - Schedules a function for the next frame",
+        "console.log": "console.log(msg) - Prints a message to the debug window"
+    ]
 
     func updateSuggestions(for text: String) {
         let parts = text.components(separatedBy: CharacterSet(charactersIn: " (.;"))
         guard let lastPart = parts.last, !lastPart.isEmpty else {
             suggestions = []
+            currentHelp = nil
             return
         }
         
         let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
-        // Only show if there's something to suggest and it's not already perfectly typed
         if matches.count > 1 || (matches.count == 1 && matches[0] != lastPart) {
             suggestions = matches
+            currentHelp = nil
+        } else if matches.count == 1 && matches[0] == lastPart {
+            suggestions = []
+            currentHelp = jsFunctionHelp[matches[0]]
         } else {
             suggestions = []
+            currentHelp = nil
         }
     }
     
@@ -640,8 +678,9 @@ struct CLIView: View {
         let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
         guard let lastPart = parts.last else { return }
         let prefix = String(input.dropLast(lastPart.count))
-        input = prefix + suggestion
+        input = prefix + suggestion + "("
         suggestions = []
+        currentHelp = jsFunctionHelp[suggestion]
     }
 
     func handleAutocomplete() {
@@ -685,6 +724,7 @@ struct CLIView: View {
             history.append(command)
         }
         historyIndex = -1
+        currentHelp = nil
         
         log.append(CLILine(text: command, isResponse: false))
         input = ""
