@@ -9,14 +9,15 @@ static DrawCubeCallback draw_cube_callback;
 
 static JSValue js_drawCube(JSContext *ctx, JSValueConst this_val,
                            int argc, JSValueConst *argv) {
-    if (argc < 3) return JS_UNDEFINED;
-    double x, y, size;
+    if (argc < 4) return JS_UNDEFINED;
+    double x, y, z, size;
     if (JS_ToFloat64(ctx, &x, argv[0])) return JS_EXCEPTION;
     if (JS_ToFloat64(ctx, &y, argv[1])) return JS_EXCEPTION;
-    if (JS_ToFloat64(ctx, &size, argv[2])) return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &z, argv[2])) return JS_EXCEPTION;
+    if (JS_ToFloat64(ctx, &size, argv[3])) return JS_EXCEPTION;
 
     if (draw_cube_callback) {
-        draw_cube_callback((float)x, (float)y, (float)size);
+        draw_cube_callback((float)x, (float)y, (float)z, (float)size);
     }
 
     return JS_UNDEFINED;
@@ -43,7 +44,7 @@ void qjs_init(DrawCubeCallback callback) {
 
     JSValue global_obj = JS_GetGlobalObject(ctx);
     JS_SetPropertyStr(ctx, global_obj, "drawCube",
-                      JS_NewCFunction(ctx, js_drawCube, "drawCube", 3));
+                      JS_NewCFunction(ctx, js_drawCube, "drawCube", 4));
     JS_FreeValue(ctx, global_obj);
     printf("qjs_init: Finished\n");
     fflush(stdout);

@@ -12,10 +12,10 @@ struct CubeInstance {
     var size: Float
 }
 
-typealias DrawCubeCFunction = @convention(c) (Float, Float, Float) -> Void
+typealias DrawCubeCFunction = @convention(c) (Float, Float, Float, Float) -> Void
 
-let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, size in
-    Renderer.shared.addCube(x: x, y: y, size: size)
+let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, z, size in
+    Renderer.shared.addCube(x: x, y: y, z: z, size: size)
 }
 
 class Renderer: NSObject, MTKViewDelegate {
@@ -114,10 +114,10 @@ class Renderer: NSObject, MTKViewDelegate {
         lock.unlock()
     }
     
-    func addCube(x: Float, y: Float, size: Float) {
+    func addCube(x: Float, y: Float, z: Float, size: Float) {
         lock.lock()
         defer { lock.unlock() }
-        cubes.append(CubeInstance(position: [x, y, 0], size: size))
+        cubes.append(CubeInstance(position: [x, y, z], size: size))
     }
     
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
