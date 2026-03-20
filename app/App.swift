@@ -52,10 +52,10 @@ struct ContentView: View {
                     .padding(.top)
                 
                 HStack {
-                    Button("Help") { HelpWindowManager.shared.toggle() }
                     Spacer()
                     Button("Load") { loadFile() }
                     Button("Save") { saveFile() }
+                    Button("Help") { HelpWindowManager.shared.toggle() }
                 }
                 .padding(.bottom, 4)
                 
