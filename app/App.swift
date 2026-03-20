@@ -1,6 +1,7 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AppKit
+import RealityKit
 
 
 @main
@@ -14,7 +15,7 @@ struct MetalApp: App {
         }
     }
     
-    var body: some Scene {
+    var body: some SwiftUI.Scene {
         WindowGroup {
             ContentView()
         }
@@ -43,7 +44,7 @@ struct ContentView: View {
     
     var body: some View {
         HStack(spacing: 0) {
-            MetalView()
+            RealityKitView()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             
             VStack {
@@ -87,7 +88,7 @@ struct ContentView: View {
                     
                     Button(action: {
                         isPaused.toggle()
-                        Renderer.shared.isPaused = isPaused
+                        RealityRenderer.shared.isPaused = isPaused
                     }) {
                         Image(systemName: isPaused ? "play.circle" : "pause.fill")
                     }
@@ -128,7 +129,7 @@ struct ContentView: View {
         } else if let resourceURL = Bundle.main.url(forResource: "default-example", withExtension: "js"),
                   let content = try? String(contentsOf: resourceURL, encoding: .utf8) {
             codeStore.jsCode = content
-            print("Loaded code from bundle: scene.js")
+            print("Loaded code from bundle: default-example.js")
         } else {
             codeStore.jsCode = "drawCube(0, 0, 1.0);"
             print("Using default code.")
@@ -145,7 +146,7 @@ struct ContentView: View {
     }
     
     func reloadScene() {
-        Renderer.shared.resetJS()
+        RealityRenderer.shared.resetJS()
         runCode()
     }
     
@@ -183,6 +184,14 @@ struct ContentView: View {
             }
         }
     }
+}
+
+struct RealityKitView: NSViewRepresentable {
+    func makeNSView(context: Context) -> ARView {
+        return RealityRenderer.shared.arView
+    }
+    
+    func updateNSView(_ nsView: ARView, context: Context) {}
 }
 
 struct CodeEditor: NSViewRepresentable {
@@ -249,33 +258,45 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Group {
                         helpSection(
-                            title: "drawCube(x, y, z, size, color?)",
-                            description: "Affiche un cube 3D à une position donnée. L'argument color est optionnel au format #aarrggbb.",
-                            example: "drawCube(0, 0, 0, 1.0, \"#ffff0000\"); // Rouge opaque\ndrawCube(1, 0, 0, 0.5, \"#8000ff00\"); // Vert translucide"
+                            title: "spawn(type, name?)",
+                            description: "Crée une entité persistante ('box', 'sphere', 'plane'). Retourne un ID unique.",
+                            example: "let id = spawn('box');\nsetPosition(id, 0, 0, 0);"
+                        )
+                        
+                        helpSection(
+                            title: "setPosition(id, x, y, z)",
+                            description: "Déplace une entité à une position spécifique.",
+                            example: "setPosition(id, 2, 0, -5);"
+                        )
+                        
+                        helpSection(
+                            title: "setRotation(id, x, y, z)",
+                            description: "Oriente une entité avec des angles d'Euler (radians).",
+                            example: "setRotation(id, 0.5, 3.14, 0);"
+                        )
+                        
+                        helpSection(
+                            title: "setColor(id, r, g, b, a, met?, rough?)",
+                            description: "Change l'apparence. R, G, B, A de 0 à 1. Metallic et Roughness optionnels.",
+                            example: "setColor(id, 1, 0, 0, 1, 0.8, 0.2); // Rouge métallique"
+                        )
+                        
+                        helpSection(
+                            title: "remove(id)",
+                            description: "Supprime définitivement une entité de la scène.",
+                            example: "remove(id);"
                         )
                         
                         helpSection(
                             title: "setCamera(px, py, pz, tx, ty, tz)",
-                            description: "Positionne la caméra (px, py, pz) et définit le point qu'elle regarde (tx, ty, tz).",
+                            description: "Positionne la caméra (px, py, pz) et définit la cible (tx, ty, tz).",
                             example: "setCamera(5, 5, 5, 0, 0, 0);"
                         )
                         
                         helpSection(
-                            title: "clearCubes()",
-                            description: "Efface tous les cubes actuellement affichés. À utiliser au début de chaque frame pour l'animation.",
-                            example: "clearCubes();"
-                        )
-                        
-                        helpSection(
                             title: "requestAnimationFrame(callback)",
-                            description: "Enregistre une fonction à appeler avant le prochain rendu d'image.",
-                            example: "function loop(t) {\n  clearCubes();\n  drawCube(0, 0, 0, 1);\n  requestAnimationFrame(loop);\n}\nloop(0);"
-                        )
-                        
-                        helpSection(
-                            title: "Événements (_onEvent)",
-                            description: "Définissez globalThis._onEvent = function(type, x, y) { ... } pour gérer scroll, drag et zoom.",
-                            example: "globalThis._onEvent = function(type, x, y) {\n  if (type === 'scroll') console.log('Scroll: ' + x);\n};"
+                            description: "Enregistre une boucle d'animation.",
+                            example: "function loop(t) {\n  setRotation(id, 0, t * 0.001, 0);\n  requestAnimationFrame(loop);\n}\nloop(0);"
                         )
                     }
                 }

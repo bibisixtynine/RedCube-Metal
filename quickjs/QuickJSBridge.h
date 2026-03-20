@@ -3,12 +3,18 @@
 
 #include <stdio.h>
 
-typedef void (*DrawCubeCallback)(float x, float y, float z, float size, float r, float g, float b, float a);
+typedef char* (*SpawnCallback)(const char* type, const char* name);
+typedef void (*SetPositionCallback)(const char* id, float x, float y, float z);
+typedef void (*SetRotationCallback)(const char* id, float x, float y, float z);
+typedef void (*SetScaleCallback)(const char* id, float x, float y, float z);
+typedef void (*SetColorCallback)(const char* id, float r, float g, float b, float a, float metallic, float roughness);
+typedef void (*RemoveCallback)(const char* id);
 typedef void (*SetCameraCallback)(float px, float py, float pz, float tx, float ty, float tz);
-typedef void (*ClearCubesCallback)(void);
+typedef void (*SetPhysicsCallback)(const char* id, const char* mode);
+typedef void (*SetTextureCallback)(const char* id, const char* name);
 
-void qjs_init(DrawCubeCallback draw_callback, SetCameraCallback camera_callback, ClearCubesCallback clear_callback);
-void qjs_reset(DrawCubeCallback draw_callback, SetCameraCallback camera_callback, ClearCubesCallback clear_callback);
+void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture);
+void qjs_reset(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture);
 void qjs_run_script(const char *filename);
 void qjs_run_code(const char *code);
 void qjs_send_event(const char *type, double x, double y);
