@@ -1,0 +1,7 @@
+.DS_Store
+*.o
+*.air
+*.metallib
+RedCube.app/
+run.log
+*~
