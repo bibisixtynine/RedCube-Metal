@@ -564,7 +564,32 @@ struct CLIView: View {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
+            .onChange(of: input) { newValue in
+                updateSuggestions(for: newValue)
+            }
             .background(Color.black.opacity(0.05))
+            
+            if !suggestions.isEmpty {
+                Divider()
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(suggestions, id: \.self) { suggestion in
+                            Text(suggestion)
+                                .font(.system(.caption, design: .monospaced))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(4)
+                                .onTapGesture {
+                                    applySuggestion(suggestion)
+                                }
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 4)
+                }
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
             
             Divider()
             
@@ -591,44 +616,46 @@ struct CLIView: View {
     @State private var history: [String] = []
     @State private var historyIndex: Int = -1
     @State private var tempInput: String = ""
+    @State private var suggestions: [String] = []
     
     let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log"]
 
-    func handleAutocomplete() {
-        let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
-        guard let lastPart = parts.last, !lastPart.isEmpty else { return }
+    func updateSuggestions(for text: String) {
+        let parts = text.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+        guard let lastPart = parts.last, !lastPart.isEmpty else {
+            suggestions = []
+            return
+        }
         
         let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
-        
-        if matches.isEmpty {
-            return
-        } else if matches.count == 1 {
-            let firstMatch = matches[0]
-            let prefix = String(input.dropLast(lastPart.count))
-            input = prefix + firstMatch
+        // Only show if there's something to suggest and it's not already perfectly typed
+        if matches.count > 1 || (matches.count == 1 && matches[0] != lastPart) {
+            suggestions = matches
         } else {
-            // Multiple matches: show them in the log
-            log.append(CLILine(text: matches.joined(separator: "  "), isResponse: true))
-            
-            // Complete longest common prefix if possible
-            let common = longestCommonPrefix(matches)
-            if common.count > lastPart.count {
-                let prefix = String(input.dropLast(lastPart.count))
-                input = prefix + common
-            }
+            suggestions = []
         }
     }
     
-    private func longestCommonPrefix(_ strings: [String]) -> String {
-        guard let first = strings.first else { return "" }
-        var common = first
-        for string in strings {
-            while !string.lowercased().hasPrefix(common.lowercased()) {
-                common = String(common.dropLast())
-                if common.isEmpty { return "" }
+    func applySuggestion(_ suggestion: String) {
+        let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+        guard let lastPart = parts.last else { return }
+        let prefix = String(input.dropLast(lastPart.count))
+        input = prefix + suggestion
+        suggestions = []
+    }
+
+    func handleAutocomplete() {
+        if let first = suggestions.first {
+            applySuggestion(first)
+        } else {
+            // Fallback to the old logic if suggestions are empty but maybe we can still find something
+            let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+            guard let lastPart = parts.last, !lastPart.isEmpty else { return }
+            let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
+            if let firstMatch = matches.first {
+                applySuggestion(firstMatch)
             }
         }
-        return common
     }
 
     func navigateHistory(direction: Int) {
