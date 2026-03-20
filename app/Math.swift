@@ -35,6 +35,19 @@ struct Math {
         )
     }
     
+    static func lookAt(eye: simd_float3, target: simd_float3, up: simd_float3) -> matrix_float4x4 {
+        let z = normalize(eye - target)
+        let x = normalize(cross(up, z))
+        let y = cross(z, x)
+        
+        return matrix_float4x4(
+            [x.x,          y.x,          z.x,          0],
+            [x.y,          y.y,          z.y,          0],
+            [x.z,          y.z,          z.z,          0],
+            [-dot(x, eye), -dot(y, eye), -dot(z, eye), 1]
+        )
+    }
+    
     static func identityMatrix() -> matrix_float4x4 {
         return matrix_identity_float4x4
     }

@@ -13,9 +13,14 @@ struct CubeInstance {
 }
 
 typealias DrawCubeCFunction = @convention(c) (Float, Float, Float, Float) -> Void
+typealias SetCameraCFunction = @convention(c) (Float, Float, Float, Float, Float, Float) -> Void
 
 let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, z, size in
     Renderer.shared.addCube(x: x, y: y, z: z, size: size)
+}
+
+let qjsSetCameraCallback: SetCameraCFunction = { px, py, pz, tx, ty, tz in
+    Renderer.shared.setCamera(px: px, py: py, pz: pz, tx: tx, ty: ty, tz: tz)
 }
 
 class Renderer: NSObject, MTKViewDelegate {
@@ -35,13 +40,17 @@ class Renderer: NSObject, MTKViewDelegate {
     var rotation: Float = 0
     var isPaused: Bool = false
     
+    var cameraPosition = simd_float3(0, 0, 5)
+    var cameraTarget = simd_float3(0, 0, 0)
+    var cameraUp = simd_float3(0, 1, 0)
+    
     private override init() {
         super.init()
         guard let device = MTLCreateSystemDefaultDevice() else { return }
         self.device = device
         self.commandQueue = device.makeCommandQueue()
         setupMetal()
-        qjs_init(qjsDrawCubeCallback)
+        qjs_init(qjsDrawCubeCallback, qjsSetCameraCallback)
     }
     
     func setupMetal() {
@@ -120,6 +129,13 @@ class Renderer: NSObject, MTKViewDelegate {
         cubes.append(CubeInstance(position: [x, y, z], size: size))
     }
     
+    func setCamera(px: Float, py: Float, pz: Float, tx: Float, ty: Float, tz: Float) {
+        lock.lock()
+        defer { lock.unlock() }
+        cameraPosition = [px, py, pz]
+        cameraTarget = [tx, ty, tz]
+    }
+    
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
     
     func draw(in view: MTKView) {
@@ -133,16 +149,16 @@ class Renderer: NSObject, MTKViewDelegate {
         
         let projectionMatrix = Math.perspectiveMatrix(fovy: Float.pi / 4, aspect: Float(view.drawableSize.width / view.drawableSize.height), near: 0.1, far: 100.0)
         
+        lock.lock()
+        let viewMatrix = Math.lookAt(eye: cameraPosition, target: cameraTarget, up: cameraUp)
+        let currentCubes = cubes
+        lock.unlock()
         let commandBuffer = commandQueue.makeCommandBuffer()
         let renderEncoder = commandBuffer?.makeRenderCommandEncoder(descriptor: renderPassDescriptor)
         
         renderEncoder?.setRenderPipelineState(pipelineState)
         renderEncoder?.setDepthStencilState(depthState)
         renderEncoder?.setVertexBuffer(vertexBuffer, offset: 0, index: 0)
-        
-        lock.lock()
-        let currentCubes = cubes
-        lock.unlock()
         
         let cubeCount = min(currentCubes.count, maxCubes)
         if cubeCount == 0 {
@@ -159,19 +175,19 @@ class Renderer: NSObject, MTKViewDelegate {
             if index >= maxCubes { break }
             
             var translation = Math.identityMatrix()
-            translation.columns.3 = [cube.position.x, cube.position.y, cube.position.z - 5.0, 1.0]
+            translation.columns.3 = [cube.position.x, cube.position.y, cube.position.z, 1.0]
             
             var scale = Math.identityMatrix()
             scale[0][0] = cube.size
             scale[1][1] = cube.size
             scale[2][2] = cube.size
             
-            let mvp = projectionMatrix * translation * modelMatrix * scale
+            let mvp = projectionMatrix * viewMatrix * translation * modelMatrix * scale
             contents[index].modelViewProjectionMatrix = mvp
         }
         
         renderEncoder?.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
-        renderEncoder?.drawIndexedPrimitives(type: .triangle, indexCount: 36, indexType: .uint16, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: cubeCount)
+        renderEncoder?.drawIndexedPrimitives(type: MTLPrimitiveType.triangle, indexCount: 36, indexType: MTLIndexType.uint16, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: cubeCount)
         
         renderEncoder?.endEncoding()
         commandBuffer?.present(drawable)
