@@ -19,7 +19,10 @@ class RealityARView: ARView {
 class RealityRenderer: NSObject {
     static let shared = RealityRenderer()
     
-    let arView: ARView
+    var arView: ARView?
+    private var draggedEntity: Entity?
+    private var dragPlane: Float = 0
+    private var dragOffset: SIMD3<Float> = .zero
     private var entities: [String: Entity] = [:]
     private let rootAnchor = AnchorEntity(world: .zero)
     private let camera = PerspectiveCamera()
@@ -34,12 +37,12 @@ class RealityRenderer: NSObject {
         super.init()
         setupScene()
         
-        arView.environment.background = .color(.black)
+        arView?.environment.background = .color(.black)
         
         print("RealityRenderer: Initializing...")
         qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback)
         
-        arView.scene.publisher(for: SceneEvents.Update.self)
+        arView?.scene.publisher(for: SceneEvents.Update.self)
             .sink { [weak self] event in
                 self?.update(time: event.deltaTime)
             }
@@ -48,9 +51,9 @@ class RealityRenderer: NSObject {
     }
     
     func setupScene() {
-        arView.scene.addAnchor(rootAnchor)
+        arView?.scene.addAnchor(rootAnchor)
         cameraAnchor.addChild(camera)
-        arView.scene.addAnchor(cameraAnchor)
+        arView?.scene.addAnchor(cameraAnchor)
         
         camera.camera.fieldOfViewInDegrees = 60
         camera.position = [0, 0, 0]
@@ -69,15 +72,15 @@ class RealityRenderer: NSObject {
         let sunAnchor = AnchorEntity(world: [20, 30, 20])
         sunAnchor.look(at: .zero, from: [20, 30, 20], relativeTo: nil)
         sunAnchor.addChild(sun)
-        arView.scene.addAnchor(sunAnchor)
+        arView?.scene.addAnchor(sunAnchor)
         
         let fill = DirectionalLight()
-        fill.light.intensity = 800
+        fill.light.intensity = 500
         fill.light.color = .init(red: 0.7, green: 0.8, blue: 1.0, alpha: 1.0)
-        let fillAnchor = AnchorEntity(world: [-20, 15, -20])
+        let fillAnchor = AnchorEntity(world: .zero)
         fillAnchor.look(at: .zero, from: [-20, 15, -20], relativeTo: nil)
         fillAnchor.addChild(fill)
-        arView.scene.addAnchor(fillAnchor)
+        arView?.scene.addAnchor(fillAnchor)
     }
     
     func resetJS() {
@@ -195,7 +198,11 @@ class RealityRenderer: NSObject {
     
     func takeScreenshot(completion: @escaping (Data?) -> Void) {
         DispatchQueue.main.async {
-            let size = self.arView.bounds.size
+            guard let arView = self.arView else {
+                completion(nil)
+                return
+            }
+            let size = arView.bounds.size
             guard size.width > 0 && size.height > 0 else {
                 completion(nil)
                 return
@@ -203,11 +210,11 @@ class RealityRenderer: NSObject {
             
             // On macOS, we can use the window backing or a bitmap rep.
             // RealityKit handles its own rendering, but the view remains an NSView.
-            guard let bitmapRep = self.arView.bitmapImageRepForCachingDisplay(in: self.arView.bounds) else {
+            guard let bitmapRep = arView.bitmapImageRepForCachingDisplay(in: arView.bounds) else {
                 completion(nil)
                 return
             }
-            self.arView.cacheDisplay(in: self.arView.bounds, to: bitmapRep)
+            arView.cacheDisplay(in: arView.bounds, to: bitmapRep)
             
             if let data = bitmapRep.representation(using: .png, properties: [:]) {
                 completion(data)
@@ -215,6 +222,104 @@ class RealityRenderer: NSObject {
                 completion(nil)
             }
         }
+    }
+    
+    // MARK: - Mouse Interaction (Picking & Dragging)
+    
+    func startDragging(at point: CGPoint) {
+        guard let arView = arView else { return }
+        
+        // Entity picking
+        if let entity = arView.entity(at: point) {
+            // Traverse up to find a draggable entity (e.g. one we spawned)
+            var current: Entity? = entity
+            while current != nil && !(current?.components.has(ModelComponent.self) ?? false) {
+                current = current?.parent
+            }
+            
+            if let target = current {
+                self.draggedEntity = target
+                
+                // Set to kinematic if it has physics to avoid jitter while dragging
+                if var physics = target.components[PhysicsBodyComponent.self] {
+                    physics.mode = .kinematic
+                    target.components[PhysicsBodyComponent.self] = physics
+                }
+                
+                // Calculate drag plane (distance from camera)
+                let cameraTransform = arView.cameraTransform
+                let entityPos = target.position(relativeTo: nil)
+                let camToEntity = entityPos - cameraTransform.translation
+                let planeNormal = simd_normalize(cameraTransform.matrix.columns.2.xyz) // Forward vector
+                dragPlane = simd_dot(camToEntity, planeNormal)
+                
+                // Initial offset
+                if let worldPos = arView.unproject(point, ontoPlane: cameraTransform.matrix, distance: dragPlane) {
+                    dragOffset = entityPos - worldPos
+                }
+            }
+        }
+    }
+    
+    func updateDragging(at point: CGPoint) {
+        guard let arView = arView, let entity = draggedEntity else { return }
+        
+        let cameraTransform = arView.cameraTransform
+        if let worldPos = arView.unproject(point, ontoPlane: cameraTransform.matrix, distance: dragPlane) {
+            entity.setPosition(worldPos + dragOffset, relativeTo: nil)
+        }
+    }
+    
+    func endDragging() {
+        guard let entity = draggedEntity else { return }
+        
+        // Restore physics mode to dynamic if it was kinematic
+        if var physics = entity.components[PhysicsBodyComponent.self] {
+            physics.mode = .dynamic
+            entity.components[PhysicsBodyComponent.self] = physics
+        }
+        
+        draggedEntity = nil
+    }
+}
+
+extension ARView {
+    func unproject(_ point: CGPoint, ontoPlane planeTransform: simd_float4x4, distance: Float) -> SIMD3<Float>? {
+        guard let ray = self.ray(through: point) else { return nil }
+        
+        // Plane is defined by a point (camera position + distance * forward) and normal (forward)
+        let planeNormal = simd_normalize(planeTransform.columns.2.xyz)
+        let planePoint = planeTransform.translation + planeNormal * distance
+        
+        // Ray-plane intersection: t = dot(planePoint - rayOrigin, planeNormal) / dot(rayDirection, planeNormal)
+        let denom = simd_dot(ray.direction, planeNormal)
+        if abs(denom) > 0.0001 {
+            let t = simd_dot(planePoint - ray.origin, planeNormal) / denom
+            return ray.origin + t * ray.direction
+        }
+        return nil
+    }
+    
+    var cameraTransform: Transform {
+        // For non-AR macOS views, the camera is usually at a fixed or controlled position
+        // In RealityKit macOS, there's always a camera entity.
+        if let camera = self.scene.findEntity(named: "camera") {
+            return camera.transform
+        }
+        // Fallback or find active camera
+        return Transform(matrix: self.cameraTransform.matrix) 
+    }
+}
+
+extension simd_float4x4 {
+    var translation: SIMD3<Float> {
+        return [columns.3.x, columns.3.y, columns.3.z]
+    }
+}
+
+extension simd_float4 {
+    var xyz: SIMD3<Float> {
+        return [x, y, z]
     }
 }
 

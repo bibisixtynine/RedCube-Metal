@@ -72,13 +72,41 @@ class CodeStore: ObservableObject {
 
 struct ContentView: View {
     @ObservedObject var codeStore = CodeStore.shared
-    @State private var isPaused: Bool = false
-    @State private var hasInitialized: Bool = false
+    @State private var isPaused = false
+    @State private var isDraggingObject = false
+    @State private var hasInitialized = false
     
     var body: some View {
         HStack(spacing: 0) {
-            RealityKitView()
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            ZStack {
+                RealityKitView()
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                if !isDraggingObject {
+                                    RealityRenderer.shared.startDragging(at: value.startLocation)
+                                    isDraggingObject = true
+                                }
+                                RealityRenderer.shared.updateDragging(at: value.location)
+                            }
+                            .onEnded { _ in
+                                RealityRenderer.shared.endDragging()
+                                isDraggingObject = false
+                            }
+                    )
+                
+                if isPaused {
+                    Rectangle()
+                        .fill(Color.black.opacity(0.5))
+                        .overlay(
+                            Image(systemName: "pause.circle.fill")
+                                .resizable()
+                                .frame(width: 100, height: 100)
+                                .foregroundColor(.white)
+                        )
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             
             VStack {
                 Text("JavaScript Editor")
@@ -263,7 +291,11 @@ struct ContentView: View {
 
 struct RealityKitView: NSViewRepresentable {
     func makeNSView(context: Context) -> ARView {
-        return RealityRenderer.shared.arView
+        let arView = ARView(frame: .zero)
+        RealityRenderer.shared.arView = arView
+        
+        // Configuration de base
+        return arView
     }
     
     func updateNSView(_ nsView: ARView, context: Context) {}
