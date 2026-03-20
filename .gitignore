@@ -3,5 +3,5 @@
 *.air
 *.metallib
 RedCube.app/
-run.log
+*.log
 *~
