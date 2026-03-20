@@ -24,6 +24,16 @@ struct MetalApp: App {
 class CodeStore: ObservableObject {
     static let shared = CodeStore()
     @Published var jsCode: String = ""
+    weak var textView: NSTextView?
+    
+    func insertCode(_ text: String) {
+        if let textView = textView {
+            textView.insertText(text, replacementRange: textView.selectedRange())
+        } else {
+            // Fallback if no view is attached
+            jsCode += "\n" + text
+        }
+    }
 }
 
 struct ContentView: View {
@@ -42,14 +52,14 @@ struct ContentView: View {
                     .padding(.top)
                 
                 HStack {
+                    Button("Help") { HelpWindowManager.shared.toggle() }
+                    Spacer()
                     Button("Load") { loadFile() }
                     Button("Save") { saveFile() }
-                    Button("Help") { HelpWindowManager.shared.toggle() }
                 }
                 .padding(.bottom, 4)
                 
-                TextEditor(text: $codeStore.jsCode)
-                    .font(.system(.body, design: .monospaced))
+                CodeEditor(text: $codeStore.jsCode)
                     .frame(width: 400)
                     .cornerRadius(8)
                     .padding()
@@ -148,6 +158,54 @@ struct ContentView: View {
     }
 }
 
+struct CodeEditor: NSViewRepresentable {
+    @Binding var text: String
+    
+    func makeNSView(context: Context) -> NSScrollView {
+        let scrollView = NSScrollView()
+        scrollView.hasVerticalScroller = true
+        scrollView.hasHorizontalScroller = false
+        
+        let textView = NSTextView(frame: .zero)
+        textView.isRichText = false
+        textView.allowsUndo = true
+        textView.autoresizingMask = [.width]
+        textView.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.delegate = context.coordinator
+        
+        scrollView.documentView = textView
+        CodeStore.shared.textView = textView
+        
+        return scrollView
+    }
+    
+    func updateNSView(_ nsView: NSScrollView, context: Context) {
+        if let textView = nsView.documentView as? NSTextView {
+            if textView.string != text {
+                textView.string = text
+            }
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: CodeEditor
+        
+        init(_ parent: CodeEditor) {
+            self.parent = parent
+        }
+        
+        func textDidChange(_ notification: Notification) {
+            if let textView = notification.object as? NSTextView {
+                self.parent.text = textView.string
+            }
+        }
+    }
+}
+
 struct HelpView: View {
     var body: some View {
         VStack(spacing: 0) {
@@ -229,9 +287,9 @@ struct HelpView: View {
                     }
                 
                 Button(action: {
-                    CodeStore.shared.jsCode = example
+                    CodeStore.shared.insertCode(example)
                 }) {
-                    Label("Insérer dans l'éditeur", systemImage: "arrow.right.doc.on.clipboard")
+                    Label("Insérer à la position du curseur", systemImage: "arrow.right.doc.on.clipboard")
                         .padding(4)
                 }
                 .buttonStyle(.borderedProminent)
