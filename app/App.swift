@@ -77,19 +77,27 @@ struct ContentView: View {
                     .padding()
                 
                 HStack {
-                    Button("Run") {
-                        runCode()
+                    Spacer()
+                    Button(action: { runCode() }) {
+                        Image(systemName: "play.fill")
+                            .foregroundColor(.green)
                     }
                     .keyboardShortcut("r", modifiers: .command)
+                    .help("Exécuter le code JS (Cmd+R)")
                     
-                    Button(isPaused ? "Resume" : "Pause") {
+                    Button(action: {
                         isPaused.toggle()
                         Renderer.shared.isPaused = isPaused
+                    }) {
+                        Image(systemName: isPaused ? "play.circle" : "pause.fill")
                     }
+                    .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
                     
-                    Button("Reload") {
-                        reloadScene()
+                    Button(action: { reloadScene() }) {
+                        Image(systemName: "arrow.clockwise")
                     }
+                    .help("Recharger la scène")
+                    Spacer()
                 }
                 .padding(.bottom)
             }
