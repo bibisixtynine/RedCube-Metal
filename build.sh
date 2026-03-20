@@ -37,7 +37,8 @@ swiftc -o metalJS.app/Contents/MacOS/metalJS \
     -framework Metal -framework MetalKit -framework SwiftUI -framework AppKit -framework QuartzCore
 
 echo "Copying assets..."
-cp scripts/scene.js metalJS.app/Contents/Resources/
+rm -rf metalJS.app/Contents/Resources/*.js
+cp js-examples/default-example.js metalJS.app/Contents/Resources/
 
 echo "Build complete. Launching metalJS.app..."
 pkill -9 metalJS || true

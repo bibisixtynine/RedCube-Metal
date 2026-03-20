@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import AppKit
 
 
 @main
@@ -38,6 +39,7 @@ struct ContentView: View {
                 HStack {
                     Button("Load") { loadFile() }
                     Button("Save") { saveFile() }
+                    Button("Help") { HelpWindowManager.shared.toggle() }
                 }
                 .padding(.bottom, 4)
                 
@@ -81,7 +83,7 @@ struct ContentView: View {
            let content = try? String(contentsOfFile: path, encoding: .utf8) {
             jsCode = content
             print("Loaded code from file: \(path)")
-        } else if let resourceURL = Bundle.main.url(forResource: "scene", withExtension: "js"),
+        } else if let resourceURL = Bundle.main.url(forResource: "default-example", withExtension: "js"),
                   let content = try? String(contentsOf: resourceURL, encoding: .utf8) {
             jsCode = content
             print("Loaded code from bundle: scene.js")
@@ -138,5 +140,127 @@ struct ContentView: View {
                 print("Failed to save file: \(error)")
             }
         }
+    }
+}
+
+struct HelpView: View {
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Documentation JavaScript")
+                    .font(.headline)
+                    .bold()
+                Spacer()
+            }
+            .padding(10)
+            .background(Color(NSColor.windowBackgroundColor))
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Group {
+                        helpSection(
+                            title: "drawCube(x, y, z, size)",
+                            description: "Affiche un cube 3D à une position donnée avec une taille spécifique.",
+                            example: "drawCube(0, 0, 0, 1.0);"
+                        )
+                        
+                        helpSection(
+                            title: "setCamera(px, py, pz, tx, ty, tz)",
+                            description: "Positionne la caméra (px, py, pz) et définit le point qu'elle regarde (tx, ty, tz).",
+                            example: "setCamera(5, 5, 5, 0, 0, 0);"
+                        )
+                        
+                        helpSection(
+                            title: "clearCubes()",
+                            description: "Efface tous les cubes actuellement affichés. À utiliser au début de chaque frame pour l'animation.",
+                            example: "clearCubes();"
+                        )
+                        
+                        helpSection(
+                            title: "requestAnimationFrame(callback)",
+                            description: "Enregistre une fonction à appeler avant le prochain rendu d'image.",
+                            example: "function loop(t) {\n  clearCubes();\n  drawCube(0, 0, 0, 1);\n  requestAnimationFrame(loop);\n}\nloop(0);"
+                        )
+                        
+                        helpSection(
+                            title: "Événements (_onEvent)",
+                            description: "Définissez globalThis._onEvent = function(type, x, y) { ... } pour gérer scroll, drag et zoom.",
+                            example: "globalThis._onEvent = function(type, x, y) {\n  if (type === 'scroll') console.log('Scroll: ' + x);\n};"
+                        )
+                    }
+                }
+                .padding()
+            }
+        }
+        .frame(width: 600, height: 700)
+    }
+    
+    func helpSection(title: String, description: String, example: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title)
+                .font(.headline)
+                .foregroundColor(.blue)
+            
+            Text(description)
+                .font(.body)
+            
+            VStack(alignment: .leading) {
+                HStack {
+                    Text("Exemple (cliquez pour copier) :")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                
+                Text(example)
+                    .font(.system(.body, design: .monospaced))
+                    .padding(8)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.black.opacity(0.1))
+                    .cornerRadius(4)
+                    .onTapGesture {
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.writeObjects([example as NSString])
+                    }
+            }
+        }
+        .padding()
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
+        )
+    }
+}
+
+class HelpWindowManager {
+    static let shared = HelpWindowManager()
+    private var window: NSPanel?
+    
+    func toggle() {
+        if let window = window, window.isVisible {
+            window.orderOut(nil)
+        } else {
+            open()
+        }
+    }
+    
+    func open() {
+        if window == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 100, y: 100, width: 600, height: 700),
+                styleMask: [.titled, .closable, .resizable, .utilityWindow, .hudWindow, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Aide JavaScript"
+            panel.isFloatingPanel = true
+            panel.level = .floating
+            panel.contentView = NSHostingView(rootView: HelpView())
+            panel.center()
+            self.window = panel
+        }
+        window?.makeKeyAndOrderFront(nil)
     }
 }
