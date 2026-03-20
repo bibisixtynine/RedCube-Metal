@@ -192,6 +192,30 @@ class RealityRenderer: NSObject {
         if isPaused { return }
         qjs_on_frame(CACurrentMediaTime())
     }
+    
+    func takeScreenshot(completion: @escaping (Data?) -> Void) {
+        DispatchQueue.main.async {
+            let size = self.arView.bounds.size
+            guard size.width > 0 && size.height > 0 else {
+                completion(nil)
+                return
+            }
+            
+            // On macOS, we can use the window backing or a bitmap rep.
+            // RealityKit handles its own rendering, but the view remains an NSView.
+            guard let bitmapRep = self.arView.bitmapImageRepForCachingDisplay(in: self.arView.bounds) else {
+                completion(nil)
+                return
+            }
+            self.arView.cacheDisplay(in: self.arView.bounds, to: bitmapRep)
+            
+            if let data = bitmapRep.representation(using: .png, properties: [:]) {
+                completion(data)
+            } else {
+                completion(nil)
+            }
+        }
+    }
 }
 
 // Fixed C strings for IDs

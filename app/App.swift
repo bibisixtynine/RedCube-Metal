@@ -35,6 +35,39 @@ class CodeStore: ObservableObject {
             jsCode += "\n" + text
         }
     }
+    
+    func runCode() {
+        print("CodeStore: Running code...")
+        qjs_run_code(jsCode)
+    }
+    
+    func reloadScene() {
+        print("CodeStore: Reloading scene...")
+        RealityRenderer.shared.resetJS()
+        runCode()
+    }
+    
+    func loadFile(from path: String) -> Bool {
+        let url = URL(fileURLWithPath: path)
+        if let content = try? String(contentsOf: url, encoding: .utf8) {
+            DispatchQueue.main.async {
+                self.jsCode = content
+            }
+            return true
+        }
+        return false
+    }
+    
+    func saveFile(to path: String) -> Bool {
+        let url = URL(fileURLWithPath: path)
+        do {
+            try jsCode.write(to: url, atomically: true, encoding: .utf8)
+            return true
+        } catch {
+            print("Failed to save file: \(error)")
+            return false
+        }
+    }
 }
 
 struct ContentView: View {
@@ -68,6 +101,11 @@ struct ContentView: View {
                         Image(systemName: "questionmark.circle")
                     }
                     .help("Aide et exemples")
+                    
+                    Button(action: { DebugWindowManager.shared.toggle() }) {
+                        Image(systemName: "ladybug")
+                    }
+                    .help("Debug Réseau")
                     Spacer()
                 }
                 .padding(.bottom, 4)
@@ -127,7 +165,7 @@ struct ContentView: View {
             codeStore.jsCode = content
             print("Loaded code from file: \(path)")
         } else if let resourceURL = Bundle.main.url(forResource: "default-example", withExtension: "js"),
-                  let content = try? String(contentsOf: resourceURL, encoding: .utf8) {
+                   let content = try? String(contentsOf: resourceURL, encoding: .utf8) {
             codeStore.jsCode = content
             print("Loaded code from bundle: default-example.js")
         } else {
@@ -137,17 +175,49 @@ struct ContentView: View {
         
         print("loadInitialCode finished. Running code...")
         runCode()
+        setupAPIServer()
+    }
+    
+    func setupAPIServer() {
+        let server = APIServer.shared
+        server.onRunJS = { code in
+            qjs_run_code(code)
+        }
+        server.onReload = {
+            codeStore.reloadScene()
+        }
+        server.onRunEditorCode = {
+            codeStore.runCode()
+        }
+        server.onTogglePause = {
+            isPaused.toggle()
+            RealityRenderer.shared.isPaused = isPaused
+        }
+        server.onLoadPath = { path in
+            codeStore.loadFile(from: path)
+        }
+        server.onSavePath = { path in
+            codeStore.saveFile(to: path)
+        }
+        server.onGetHelp = {
+            // Basic help for now, could be more elaborate
+            return "Available functions: spawn, setPosition, setRotation, setScale, setColor, remove, setCamera, setPhysics, setTexture, requestAnimationFrame"
+        }
+        server.onCallFunction = { call in
+            qjs_run_code(call)
+        }
+        server.onTakeScreenshot = { completion in
+            RealityRenderer.shared.takeScreenshot(completion: completion)
+        }
+        server.start()
     }
     
     func runCode() {
-        print("runCode: Calling qjs_run_code...")
-        qjs_run_code(codeStore.jsCode)
-        print("runCode: qjs_run_code returned.")
+        codeStore.runCode()
     }
     
     func reloadScene() {
-        RealityRenderer.shared.resetJS()
-        runCode()
+        codeStore.reloadScene()
     }
     
     func loadFile() {
@@ -392,6 +462,67 @@ class HelpWindowManager {
             panel.contentView = NSHostingView(rootView: HelpView())
             panel.center()
             panel.setFrameAutosaveName("HelpWindow")
+            panel.isReleasedWhenClosed = false
+            self.window = panel
+        }
+        window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+struct DebugView: View {
+    @ObservedObject var commandLog = CommandLog.shared
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Debug Réseau - Commandes Reçues")
+                    .font(.headline)
+                Spacer()
+                Button("Effacer") {
+                    commandLog.entries.removeAll()
+                }
+            }
+            .padding(10)
+            .background(Color(NSColor.windowBackgroundColor))
+            
+            List {
+                ForEach(commandLog.entries, id: \.self) { entry in
+                    Text(entry)
+                        .font(.system(.body, design: .monospaced))
+                        .padding(.vertical, 2)
+                }
+            }
+        }
+        .frame(minWidth: 400, minHeight: 300)
+    }
+}
+
+class DebugWindowManager {
+    static let shared = DebugWindowManager()
+    private var window: NSPanel?
+    
+    func toggle() {
+        if let window = window, window.isVisible {
+            window.orderOut(nil)
+        } else {
+            open()
+        }
+    }
+    
+    func open() {
+        if window == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 200, y: 200, width: 500, height: 400),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Debug Réseau"
+            panel.isFloatingPanel = true
+            panel.level = .floating
+            panel.contentView = NSHostingView(rootView: DebugView())
+            panel.center()
+            panel.setFrameAutosaveName("DebugWindow")
             panel.isReleasedWhenClosed = false
             self.window = panel
         }

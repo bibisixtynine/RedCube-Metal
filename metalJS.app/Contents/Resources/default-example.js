@@ -1,31 +1,77 @@
-// js-examples/default-example.js
-console.log("Loading Default Example...");
+// --- PLUIE DE CUBES (Version Premium) ---
+// Sol épuré, gravité, et contrôle caméra au trackpad.
 
-// Simple rotation state
-let time = 0;
+let camDist = 25;
+let camRotX = 0.5;
+let camRotY = 0;
 
-function animate(timestamp) {
-    time += 0.02;
-    
-    // Clear screen
-    clearCubes();
-    
-    // Set fixed camera
-    setCamera(3, 3, 3, 0, 0, 0);
-    
-    // Draw a single rotating-ish cube (the rotation is handled by the Swift renderer auto-rotation)
-    // Here we just place it at the center
-    drawCube(0, 0, 0, 1.0, "#ffff0000"); // Red
-    
-    // Draw some satellite cubes
-    const r = 1.5;
-    drawCube(Math.cos(time) * r, 0, Math.sin(time) * r, 0.2, "#ff00ff00"); // Green
-    drawCube(0, Math.sin(time * 0.7) * r, Math.cos(time * 0.7) * r, 0.2, "#ff0000ff"); // Blue
-    
-    requestAnimationFrame(animate);
+function updateCamera() {
+    let px = camDist * Math.cos(camRotX) * Math.sin(camRotY);
+    let py = camDist * Math.sin(camRotX);
+    let pz = camDist * Math.cos(camRotX) * Math.cos(camRotY);
+    setCamera(px, py, pz, 0, 0, 0);
 }
 
-// Start animation
-animate(0);
+updateCamera();
 
-console.log("Default Example Running!");
+// 1. Sol épuré (Rectangle arrondi peu épais)
+let floor = spawn('box', 'Floor');
+setScale(floor, 25, 0.2, 25);
+setPosition(floor, 0, -5, 0);
+setColor(floor, 0.6, 0.6, 0.7, 1, 0, 0.1); // Gris clair non-métallique
+setPhysics(floor, 'static');
+
+let cubes = [];
+let frameCount = 0;
+
+function spawnCube() {
+    let id = spawn('box');
+    let r = Math.random(), g = Math.random(), b = Math.random();
+    let x = (Math.random() - 0.5) * 15;
+    let z = (Math.random() - 0.5) * 15;
+    
+    setPosition(id, x, 20, z);
+    setRotation(id, Math.random() * 6, Math.random() * 6, Math.random() * 6);
+    setColor(id, r, g, b, 1, 0.8, 0.2);
+    setScale(id, 0.6, 0.6, 0.6);
+    setPhysics(id, 'dynamic');
+    
+    cubes.push(id);
+    if (cubes.length > 100) {
+        let old = cubes.shift();
+        remove(old);
+    }
+}
+
+// 2. Gestion des événements (Zoom et Rotation)
+// Le système appelle automatiquement _onEvent(type, x, y)
+globalThis._onEvent = function(type, x, y) {
+    if (type === 'drag') {
+        camRotY -= x * 0.01;
+        camRotX += y * 0.01;
+        // Limiter la rotation X pour ne pas passer sous le sol
+        if (camRotX < 0.1) camRotX = 0.1;
+        if (camRotX > 1.4) camRotX = 1.4;
+    } else if (type === 'zoom') {
+        camDist -= x * 10;
+        if (camDist < 5) camDist = 5;
+        if (camDist > 50) camDist = 50;
+    } else if (type === 'scroll') {
+        // Optionnel : utiliser le scroll vertical pour le zoom alternatif
+        camDist -= y * 0.1;
+        if (camDist < 5) camDist = 5;
+        if (camDist > 50) camDist = 50;
+    }
+    updateCamera();
+};
+
+function loop(t) {
+    frameCount++;
+    if (frameCount % 6 === 0) {
+        spawnCube();
+    }
+    requestAnimationFrame(loop);
+}
+
+console.log("Interaction prête ! Utilisez le trackpad pour pivoter (drag) et zoomer (pinch).");
+loop(0);

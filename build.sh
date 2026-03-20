@@ -22,12 +22,12 @@ cc -c quickjs/QuickJSBridge.c -Ivendor/quickjs -o quickjs/QuickJSBridge.o
 
 echo "Building Swift Application..."
 swiftc -o metalJS.app/Contents/MacOS/metalJS \
-    app/App.swift app/RealityRenderer.swift \
+    app/App.swift app/RealityRenderer.swift app/APIServer.swift \
     quickjs/QuickJSBridge.o \
     -import-objc-header app/Bridging-Header.h \
     -Lvendor/quickjs -lquickjs \
     -sdk $(xcrun --show-sdk-path --sdk macosx) \
-    -framework RealityKit -framework SwiftUI -framework AppKit -framework QuartzCore -framework Combine
+    -framework RealityKit -framework SwiftUI -framework AppKit -framework QuartzCore -framework Combine -framework Network
 
 echo "Copying assets..."
 rm -rf metalJS.app/Contents/Resources/*
