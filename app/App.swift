@@ -53,9 +53,21 @@ struct ContentView: View {
                 
                 HStack {
                     Spacer()
-                    Button("Load") { loadFile() }
-                    Button("Save") { saveFile() }
-                    Button("Help") { HelpWindowManager.shared.toggle() }
+                    Button(action: { loadFile() }) {
+                        Image(systemName: "folder")
+                    }
+                    .help("Charger un fichier JS")
+                    
+                    Button(action: { saveFile() }) {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .help("Sauvegarder le fichier JS")
+                    
+                    Button(action: { HelpWindowManager.shared.toggle() }) {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .help("Aide et exemples")
+                    Spacer()
                 }
                 .padding(.bottom, 4)
                 
