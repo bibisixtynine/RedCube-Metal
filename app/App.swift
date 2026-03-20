@@ -1,4 +1,6 @@
 import SwiftUI
+import UniformTypeIdentifiers
+
 
 @main
 struct MetalApp: App {
@@ -32,6 +34,12 @@ struct ContentView: View {
                 Text("JavaScript Editor")
                     .font(.headline)
                     .padding(.top)
+                
+                HStack {
+                    Button("Load") { loadFile() }
+                    Button("Save") { saveFile() }
+                }
+                .padding(.bottom, 4)
                 
                 TextEditor(text: $jsCode)
                     .font(.system(.body, design: .monospaced))
@@ -95,5 +103,40 @@ struct ContentView: View {
     func reloadScene() {
         Renderer.shared.clearCubes()
         runCode()
+    }
+    
+    func loadFile() {
+        let panel = NSOpenPanel()
+        if let jsType = UTType(filenameExtension: "js") {
+            panel.allowedContentTypes = [jsType, .sourceCode, .plainText]
+        } else {
+            panel.allowedContentTypes = [.sourceCode, .plainText]
+        }
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        if panel.runModal() == .OK, let url = panel.url {
+            if let content = try? String(contentsOf: url, encoding: .utf8) {
+                jsCode = content
+                print("Loaded file from \(url.path)")
+            }
+        }
+    }
+    
+    func saveFile() {
+        let panel = NSSavePanel()
+        if let jsType = UTType(filenameExtension: "js") {
+            panel.allowedContentTypes = [jsType, .sourceCode, .plainText]
+        } else {
+            panel.allowedContentTypes = [.sourceCode, .plainText]
+        }
+        panel.nameFieldStringValue = "scene.js"
+        if panel.runModal() == .OK, let url = panel.url {
+            do {
+                try jsCode.write(to: url, atomically: true, encoding: .utf8)
+                print("Saved file to \(url.path)")
+            } catch {
+                print("Failed to save file: \(error)")
+            }
+        }
     }
 }
