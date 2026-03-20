@@ -51,6 +51,7 @@ This application was created without Xcode using the **Antigravity AI Assistant*
 ### Prerequisites (macOS)
 To compile the app yourself without a full Xcode installation, you need the macOS Command Line Tools and the QuickJS library:
 1. Install Command Line Tools: `xcode-select --install`
+   *(Note: This prompts a small download for the necessary compilers like `swiftc` and `metal`. It **does not** require installing the massive Xcode app.)*
 2. Install QuickJS (via Homebrew): `brew install quickjs`
 
 ### Compilation
