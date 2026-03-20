@@ -654,6 +654,18 @@ struct CLIView: View {
     ]
 
     func updateSuggestions(for text: String) {
+        // Handle help for function calls (text containing parenthesis)
+        if let parenRange = text.range(of: "(", options: .backwards) {
+            let beforeParen = text[..<parenRange.lowerBound]
+            let parts = beforeParen.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+            if let lastWord = parts.last?.trimmingCharacters(in: .whitespaces), 
+               jsFunctions.contains(lastWord) {
+                suggestions = []
+                currentHelp = jsFunctionHelp[lastWord]
+                return
+            }
+        }
+        
         let parts = text.components(separatedBy: CharacterSet(charactersIn: " (.;"))
         guard let lastPart = parts.last, !lastPart.isEmpty else {
             suggestions = []
