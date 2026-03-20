@@ -14,6 +14,7 @@ struct CubeInstance {
 
 typealias DrawCubeCFunction = @convention(c) (Float, Float, Float, Float) -> Void
 typealias SetCameraCFunction = @convention(c) (Float, Float, Float, Float, Float, Float) -> Void
+typealias ClearCubesCFunction = @convention(c) () -> Void
 
 let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, z, size in
     Renderer.shared.addCube(x: x, y: y, z: z, size: size)
@@ -21,6 +22,10 @@ let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, z, size in
 
 let qjsSetCameraCallback: SetCameraCFunction = { px, py, pz, tx, ty, tz in
     Renderer.shared.setCamera(px: px, py: py, pz: pz, tx: tx, ty: ty, tz: tz)
+}
+
+let qjsClearCubesCallback: ClearCubesCFunction = {
+    Renderer.shared.clearCubes()
 }
 
 class Renderer: NSObject, MTKViewDelegate {
@@ -50,7 +55,7 @@ class Renderer: NSObject, MTKViewDelegate {
         self.device = device
         self.commandQueue = device.makeCommandQueue()
         setupMetal()
-        qjs_init(qjsDrawCubeCallback, qjsSetCameraCallback)
+        qjs_init(qjsDrawCubeCallback, qjsSetCameraCallback, qjsClearCubesCallback)
     }
     
     func setupMetal() {
@@ -125,7 +130,7 @@ class Renderer: NSObject, MTKViewDelegate {
     
     func resetJS() {
         clearCubes()
-        qjs_reset(qjsDrawCubeCallback, qjsSetCameraCallback)
+        qjs_reset(qjsDrawCubeCallback, qjsSetCameraCallback, qjsClearCubesCallback)
     }
     
     func addCube(x: Float, y: Float, z: Float, size: Float) {
@@ -159,6 +164,9 @@ class Renderer: NSObject, MTKViewDelegate {
         guard let drawable = view.currentDrawable,
               let renderPassDescriptor = view.currentRenderPassDescriptor,
               let pipelineState = pipelineState else { return }
+        
+        // Trigger JS frame callback
+        qjs_on_frame(CACurrentMediaTime())
         
         if !isPaused {
             rotation += 0.02

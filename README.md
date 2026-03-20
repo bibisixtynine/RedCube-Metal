@@ -46,6 +46,9 @@ for (let x = -1; x <= 1; x = x + 0.5) {
 - **Live Execution:** Pressing `Run` (or `Cmd + R`) executes the JavaScript code and **adds** the new cubes to the existing scene.
 - **3D Support:** The `drawCube(x, y, z, size)` function allows positioning objects anywhere in 3D space.
 - **Camera Control:** The `setCamera(px, py, pz, tx, ty, tz)` function allows you to position the camera (`px, py, pz`) and point it at a target (`tx, ty, tz`).
+- **Animation Loop:**
+    - `requestAnimationFrame(callback)`: Schedules a function to run before the next frame (60fps).
+    - `clearCubes()`: Clears all cubes from the scene, essential for frame-by-frame animation.
 - **Interaction Hook:** Define a global `_onEvent(type, x, y)` function in your JS to react to trackpad events:
     - `type === "scroll"`: Two-finger scroll (deltas in `x, y`).
     - `type === "zoom"`: Pinch-to-zoom (magnification in `x`).

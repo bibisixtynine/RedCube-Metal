@@ -7,6 +7,8 @@ static JSRuntime *rt;
 static JSContext *ctx;
 static DrawCubeCallback draw_cube_callback;
 static SetCameraCallback set_camera_callback;
+static ClearCubesCallback clear_cubes_callback;
+static JSValue animation_callback = JS_UNDEFINED;
 
 static JSValue js_drawCube(JSContext *ctx, JSValueConst this_val,
                            int argc, JSValueConst *argv) {
@@ -43,7 +45,26 @@ static JSValue js_setCamera(JSContext *ctx, JSValueConst this_val,
     return JS_UNDEFINED;
 }
 
-void qjs_init(DrawCubeCallback draw_cb, SetCameraCallback camera_cb) {
+static JSValue js_clearCubes(JSContext *ctx, JSValueConst this_val,
+                             int argc, JSValueConst *argv) {
+    if (clear_cubes_callback) {
+        clear_cubes_callback();
+    }
+    return JS_UNDEFINED;
+}
+
+static JSValue js_requestAnimationFrame(JSContext *ctx, JSValueConst this_val,
+                                        int argc, JSValueConst *argv) {
+    if (argc < 1 || !JS_IsFunction(ctx, argv[0]))
+        return JS_UNDEFINED;
+    
+    JS_FreeValue(ctx, animation_callback);
+    animation_callback = JS_DupValue(ctx, argv[0]);
+    
+    return JS_NewInt32(ctx, 0); // Dummy ID
+}
+
+void qjs_init(DrawCubeCallback draw_cb, SetCameraCallback camera_cb, ClearCubesCallback clear_cb) {
     if (rt) {
         printf("qjs_init: Already initialized\n");
         fflush(stdout);
@@ -60,6 +81,8 @@ void qjs_init(DrawCubeCallback draw_cb, SetCameraCallback camera_cb) {
     
     draw_cube_callback = draw_cb;
     set_camera_callback = camera_cb;
+    clear_cubes_callback = clear_cb;
+    animation_callback = JS_UNDEFINED;
 
     js_std_add_helpers(ctx, 0, NULL);
 
@@ -68,14 +91,18 @@ void qjs_init(DrawCubeCallback draw_cb, SetCameraCallback camera_cb) {
                       JS_NewCFunction(ctx, js_drawCube, "drawCube", 4));
     JS_SetPropertyStr(ctx, global_obj, "setCamera",
                       JS_NewCFunction(ctx, js_setCamera, "setCamera", 6));
+    JS_SetPropertyStr(ctx, global_obj, "clearCubes",
+                      JS_NewCFunction(ctx, js_clearCubes, "clearCubes", 0));
+    JS_SetPropertyStr(ctx, global_obj, "requestAnimationFrame",
+                      JS_NewCFunction(ctx, js_requestAnimationFrame, "requestAnimationFrame", 1));
     JS_FreeValue(ctx, global_obj);
     printf("qjs_init: Finished\n");
     fflush(stdout);
 }
 
-void qjs_reset(DrawCubeCallback draw_cb, SetCameraCallback camera_cb) {
+void qjs_reset(DrawCubeCallback draw_cb, SetCameraCallback camera_cb, ClearCubesCallback clear_cb) {
     qjs_cleanup();
-    qjs_init(draw_cb, camera_cb);
+    qjs_init(draw_cb, camera_cb, clear_cb);
 }
 
 void qjs_run_script(const char *filename) {
@@ -137,10 +164,30 @@ void qjs_send_event(const char *type, double x, double y) {
     JS_FreeValue(ctx, global_obj);
 }
 
+void qjs_on_frame(double timestamp) {
+    if (!ctx || JS_IsUndefined(animation_callback)) return;
+    
+    JSValue cb = animation_callback;
+    animation_callback = JS_UNDEFINED;
+    
+    JSValue args[1];
+    args[0] = JS_NewFloat64(ctx, timestamp);
+    
+    JSValue ret = JS_Call(ctx, cb, JS_UNDEFINED, 1, args);
+    
+    JS_FreeValue(ctx, cb);
+    JS_FreeValue(ctx, args[0]);
+    JS_FreeValue(ctx, ret);
+}
+
 void qjs_cleanup(void) {
     printf("qjs_cleanup\n");
     fflush(stdout);
-    if (ctx) JS_FreeContext(ctx);
+    if (ctx) {
+        JS_FreeValue(ctx, animation_callback);
+        animation_callback = JS_UNDEFINED;
+        JS_FreeContext(ctx);
+    }
     if (rt) JS_FreeRuntime(rt);
     ctx = NULL;
     rt = NULL;
