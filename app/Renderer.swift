@@ -10,14 +10,15 @@ struct Vertex {
 struct CubeInstance {
     var position: simd_float3
     var size: Float
+    var color: simd_float4
 }
 
-typealias DrawCubeCFunction = @convention(c) (Float, Float, Float, Float) -> Void
+typealias DrawCubeCFunction = @convention(c) (Float, Float, Float, Float, Float, Float, Float, Float) -> Void
 typealias SetCameraCFunction = @convention(c) (Float, Float, Float, Float, Float, Float) -> Void
 typealias ClearCubesCFunction = @convention(c) () -> Void
 
-let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, z, size in
-    Renderer.shared.addCube(x: x, y: y, z: z, size: size)
+let qjsDrawCubeCallback: DrawCubeCFunction = { x, y, z, size, r, g, b, a in
+    Renderer.shared.addCube(x: x, y: y, z: z, size: size, r: r, g: g, b: b, a: a)
 }
 
 let qjsSetCameraCallback: SetCameraCFunction = { px, py, pz, tx, ty, tz in
@@ -133,10 +134,10 @@ class Renderer: NSObject, MTKViewDelegate {
         qjs_reset(qjsDrawCubeCallback, qjsSetCameraCallback, qjsClearCubesCallback)
     }
     
-    func addCube(x: Float, y: Float, z: Float, size: Float) {
+    func addCube(x: Float, y: Float, z: Float, size: Float, r: Float, g: Float, b: Float, a: Float) {
         lock.lock()
         defer { lock.unlock() }
-        cubes.append(CubeInstance(position: [x, y, z], size: size))
+        cubes.append(CubeInstance(position: [x, y, z], size: size, color: [r, g, b, a]))
     }
     
     func setCamera(px: Float, py: Float, pz: Float, tx: Float, ty: Float, tz: Float) {
@@ -209,6 +210,7 @@ class Renderer: NSObject, MTKViewDelegate {
             
             let mvp = projectionMatrix * viewMatrix * translation * modelMatrix * scale
             contents[index].modelViewProjectionMatrix = mvp
+            contents[index].instanceColor = cube.color
         }
         
         renderEncoder?.setVertexBuffer(uniformBuffer, offset: 0, index: 1)

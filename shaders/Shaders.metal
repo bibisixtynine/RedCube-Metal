@@ -3,6 +3,7 @@ using namespace metal;
 
 struct Uniforms {
     float4x4 modelViewProjectionMatrix;
+    float4 instanceColor;
 };
 
 struct VertexIn {
@@ -20,10 +21,14 @@ vertex VertexOut vertex_main(VertexIn in [[stage_in]],
                              uint instanceID [[instance_id]]) {
     VertexOut out;
     out.position = uniforms[instanceID].modelViewProjectionMatrix * float4(in.position, 1.0);
-    out.color = in.color;
+    float4 color = uniforms[instanceID].instanceColor;
+    if (color.a < 0.0) {
+        out.color = in.color;
+    } else {
+        out.color = color;
+    }
     return out;
 }
-
 fragment float4 fragment_main(VertexOut in [[stage_in]]) {
     return in.color;
 }

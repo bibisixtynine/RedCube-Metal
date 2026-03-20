@@ -1,7 +1,8 @@
 import simd
 
 struct Uniforms {
-    var modelViewProjectionMatrix: matrix_float4x4
+    var modelViewProjectionMatrix: simd_float4x4
+    var instanceColor: simd_float4
 }
 
 struct Math {

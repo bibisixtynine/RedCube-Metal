@@ -19,8 +19,24 @@ static JSValue js_drawCube(JSContext *ctx, JSValueConst this_val,
     if (JS_ToFloat64(ctx, &z, argv[2])) return JS_EXCEPTION;
     if (JS_ToFloat64(ctx, &size, argv[3])) return JS_EXCEPTION;
 
+    float r = -1.0f, g = -1.0f, b = -1.0f, a = -1.0f;
+    
+    if (argc >= 5 && JS_IsString(argv[4])) {
+        const char *hex = JS_ToCString(ctx, argv[4]);
+        if (hex && hex[0] == '#' && strlen(hex) == 9) {
+            unsigned int ai, ri, gi, bi;
+            if (sscanf(hex + 1, "%02x%02x%02x%02x", &ai, &ri, &gi, &bi) == 4) {
+                a = ai / 255.0f;
+                r = ri / 255.0f;
+                g = gi / 255.0f;
+                b = bi / 255.0f;
+            }
+        }
+        JS_FreeCString(ctx, hex);
+    }
+
     if (draw_cube_callback) {
-        draw_cube_callback((float)x, (float)y, (float)z, (float)size);
+        draw_cube_callback((float)x, (float)y, (float)z, (float)size, r, g, b, a);
     }
 
     return JS_UNDEFINED;

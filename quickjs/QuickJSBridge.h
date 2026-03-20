@@ -3,7 +3,7 @@
 
 #include <stdio.h>
 
-typedef void (*DrawCubeCallback)(float x, float y, float z, float size);
+typedef void (*DrawCubeCallback)(float x, float y, float z, float size, float r, float g, float b, float a);
 typedef void (*SetCameraCallback)(float px, float py, float pz, float tx, float ty, float tz);
 typedef void (*ClearCubesCallback)(void);
 
