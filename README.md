@@ -41,6 +41,7 @@ for (let x = -2; x <= 2; x++) {
 - **Live Execution:** Pressing `Run` (or `Cmd + R`) instantly executes the JavaScript code and updates the Metal view.
 - **Real-time Animation Control:** Pause and resume the continuous cube rotation to inspect the scene.
 - **Scene Reloading:** Clear out all generated objects and reset the scene via the UI.
+- **Load & Save Scripts:** Native macOS dialogs allow you to open `.js` files from your computer and save your editor's code directly to the filesystem.
 
 ## Running the App
 A pre-compiled version of the application (`RedCube.app`) is included directly within the repository. You can simply clone this repository and double-click `RedCube.app` in Finder to launch the application immediately.
