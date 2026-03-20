@@ -599,11 +599,36 @@ struct CLIView: View {
         guard let lastPart = parts.last, !lastPart.isEmpty else { return }
         
         let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
-        if let firstMatch = matches.first {
-            // Very basic: just replace the last part
+        
+        if matches.isEmpty {
+            return
+        } else if matches.count == 1 {
+            let firstMatch = matches[0]
             let prefix = String(input.dropLast(lastPart.count))
             input = prefix + firstMatch
+        } else {
+            // Multiple matches: show them in the log
+            log.append(CLILine(text: matches.joined(separator: "  "), isResponse: true))
+            
+            // Complete longest common prefix if possible
+            let common = longestCommonPrefix(matches)
+            if common.count > lastPart.count {
+                let prefix = String(input.dropLast(lastPart.count))
+                input = prefix + common
+            }
         }
+    }
+    
+    private func longestCommonPrefix(_ strings: [String]) -> String {
+        guard let first = strings.first else { return "" }
+        var common = first
+        for string in strings {
+            while !string.lowercased().hasPrefix(common.lowercased()) {
+                common = String(common.dropLast())
+                if common.isEmpty { return "" }
+            }
+        }
+        return common
     }
 
     func navigateHistory(direction: Int) {
