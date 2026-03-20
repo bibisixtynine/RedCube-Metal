@@ -1,0 +1,43 @@
+# RedCube: Metal + JavaScript Renderer
+
+## Project Overview
+RedCube is an interactive macOS application that combines the high-performance 3D rendering capabilities of Apple's **Metal** framework with the lightweight scripting power of the **QuickJS** engine. It allows users to write JavaScript code in a built-in text editor to programmatically generate and control 3D scenes (specifically, rotating colored cubes) in real time.
+
+## Goal
+The primary goal of this project is to demonstrate how to bridge a fast, compiled graphics API (Metal) with a dynamic scripting language (JavaScript). This provides a flexible playground where developers or artists can instantly see the results of their code without needing to recompile the entire Swift application, creating an ideal environment for rapid prototyping, creative coding, and educational purposes.
+
+## Architecture & Design
+The application is structured into three main layers:
+
+1. **User Interface (SwiftUI):** A split-pane macOS layout containing a live Metal canvas and a live JavaScript text editor. It provides controls to run code, pause/resume animations, and reload the scene.
+2. **Graphics Engine (Metal & MetalKit):** A custom `Renderer` class handles the graphics pipeline, vertex processing, shader execution, and instanced drawing of 3D cubes. It calculates camera projections and model transformations (such as continuous rotation).
+3. **Scripting Engine (QuickJS):** A C-based bridge (`QuickJSBridge.c/.h`) embeds the QuickJS runtime into the Swift app. It exposes native Swift functions to the JavaScript environment, such as the `drawCube` callback, allowing JS scripts to command the Metal renderer.
+
+## Libraries and Frameworks Used
+- **SwiftUI:** For building the modern, reactive macOS user interface.
+- **Metal / MetalKit:** Apple's low-level, hardware-accelerated graphics API for rendering 3D graphics.
+- **QuickJS:** A small and embeddable JavaScript engine, used to parse and execute user-provided scripts safely and quickly.
+- **simd:** Used for high-performance vectorized math operations, specifically for 3D matrix transformations (translation, rotation, and projection).
+
+## What You Can Do With It
+You can interactively populate the 3D scene by writing JavaScript in the editor. 
+
+**Exposed API:**
+- `drawCube(x, y, size)`: Renders a cube at the specified `(x, y)` coordinates in 3D space with the given `size`.
+
+**Example Usage:**
+You can write loops, algorithms, or generative scripts to create complex structures:
+
+```javascript
+// A simple grid of cubes
+for (let x = -2; x <= 2; x++) {
+    for (let y = -2; y <= 2; y++) {
+        drawCube(x, y, 0.3);
+    }
+}
+```
+
+**Features:**
+- **Live Execution:** Pressing `Run` (or `Cmd + R`) instantly executes the JavaScript code and updates the Metal view.
+- **Real-time Animation Control:** Pause and resume the continuous cube rotation to inspect the scene.
+- **Scene Reloading:** Clear out all generated objects and reset the scene via the UI.
