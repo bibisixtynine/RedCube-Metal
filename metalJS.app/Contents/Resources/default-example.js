@@ -15,12 +15,12 @@ function animate(timestamp) {
     
     // Draw a single rotating-ish cube (the rotation is handled by the Swift renderer auto-rotation)
     // Here we just place it at the center
-    drawCube(0, 0, 0, 1.0);
+    drawCube(0, 0, 0, 1.0, "#ffff0000"); // Red
     
     // Draw some satellite cubes
     const r = 1.5;
-    drawCube(Math.cos(time) * r, 0, Math.sin(time) * r, 0.2);
-    drawCube(0, Math.sin(time * 0.7) * r, Math.cos(time * 0.7) * r, 0.2);
+    drawCube(Math.cos(time) * r, 0, Math.sin(time) * r, 0.2, "#ff00ff00"); // Green
+    drawCube(0, Math.sin(time * 0.7) * r, Math.cos(time * 0.7) * r, 0.2, "#ff0000ff"); // Blue
     
     requestAnimationFrame(animate);
 }

@@ -120,13 +120,13 @@ function draw() {
     clearCubes();
 
     // Draw Paddle
-    drawCube(state.paddleX, PADDLE_Y, 0, PADDLE_WIDTH);
+    drawCube(state.paddleX, PADDLE_Y, 0, PADDLE_WIDTH, "#ff00ffff"); // Cyan
     // Draw Ball
-    drawCube(state.ball.x, state.ball.y, 0, state.ball.size);
+    drawCube(state.ball.x, state.ball.y, 0, state.ball.size, "#ffffffff"); // White
     // Draw Bricks
     for (let brick of state.bricks) {
         if (brick.active) {
-            drawCube(brick.x, brick.y, 0, BRICK_WIDTH);
+            drawCube(brick.x, brick.y, 0, BRICK_WIDTH, "#ffffa500"); // Orange
         }
     }
     

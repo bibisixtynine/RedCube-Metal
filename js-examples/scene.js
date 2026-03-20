@@ -48,7 +48,12 @@ function animate(timestamp) {
             const d = Math.sqrt(x*x + z*z);
             const y = Math.sin(d * 4 - state.time) * 0.3;
             
-            drawCube(x, y, z, 0.1);
+            // Dynamic color based on height
+            const intensity = Math.floor((y + 0.3) / 0.6 * 255);
+            const hex = intensity.toString(16).padStart(2, '0');
+            const color = "#ff" + hex + "80ff"; // Purple to white-ish pink
+            
+            drawCube(x, y, z, 0.1, color);
         }
     }
     

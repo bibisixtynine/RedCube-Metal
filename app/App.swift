@@ -222,9 +222,9 @@ struct HelpView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     Group {
                         helpSection(
-                            title: "drawCube(x, y, z, size)",
-                            description: "Affiche un cube 3D à une position donnée avec une taille spécifique.",
-                            example: "drawCube(0, 0, 0, 1.0);"
+                            title: "drawCube(x, y, z, size, color?)",
+                            description: "Affiche un cube 3D à une position donnée. L'argument color est optionnel au format #aarrggbb.",
+                            example: "drawCube(0, 0, 0, 1.0, \"#ffff0000\"); // Rouge opaque\ndrawCube(1, 0, 0, 0.5, \"#8000ff00\"); // Vert translucide"
                         )
                         
                         helpSection(
