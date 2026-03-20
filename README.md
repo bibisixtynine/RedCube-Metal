@@ -30,8 +30,8 @@ You can write loops, algorithms, or generative scripts to create complex structu
 
 ```javascript
 // A simple grid of cubes
-for (let x = -2; x <= 2; x=x+0.1) {
-    for (let y = -2; y <= 2; y=y+0.1) {
+for (let x = -1; x <= 1; x=x+0.5) {
+    for (let y = -1; y <= 1; y=y+0.5) {
         drawCube(x, y, 0.3);
     }
 }
