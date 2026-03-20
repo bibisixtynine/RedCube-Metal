@@ -101,7 +101,7 @@ struct ContentView: View {
     }
     
     func reloadScene() {
-        Renderer.shared.clearCubes()
+        Renderer.shared.resetJS()
         runCode()
     }
     

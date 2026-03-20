@@ -123,6 +123,11 @@ class Renderer: NSObject, MTKViewDelegate {
         lock.unlock()
     }
     
+    func resetJS() {
+        clearCubes()
+        qjs_reset(qjsDrawCubeCallback, qjsSetCameraCallback)
+    }
+    
     func addCube(x: Float, y: Float, z: Float, size: Float) {
         lock.lock()
         defer { lock.unlock() }

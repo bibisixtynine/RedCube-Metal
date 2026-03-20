@@ -73,6 +73,11 @@ void qjs_init(DrawCubeCallback draw_cb, SetCameraCallback camera_cb) {
     fflush(stdout);
 }
 
+void qjs_reset(DrawCubeCallback draw_cb, SetCameraCallback camera_cb) {
+    qjs_cleanup();
+    qjs_init(draw_cb, camera_cb);
+}
+
 void qjs_run_script(const char *filename) {
     printf("qjs_run_script: %s\n", filename);
     fflush(stdout);
