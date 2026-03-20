@@ -41,3 +41,21 @@ for (let x = -2; x <= 2; x++) {
 - **Live Execution:** Pressing `Run` (or `Cmd + R`) instantly executes the JavaScript code and updates the Metal view.
 - **Real-time Animation Control:** Pause and resume the continuous cube rotation to inspect the scene.
 - **Scene Reloading:** Clear out all generated objects and reset the scene via the UI.
+
+## Running the App
+A pre-compiled version of the application (`RedCube.app`) is included directly within the repository. You can simply clone this repository and double-click `RedCube.app` in Finder to launch the application immediately.
+
+## Building from Source
+This application was created without Xcode using the **Antigravity AI Assistant**. The entire application is built using terminal tools via Apple's Command Line Tools and the open-source QuickJS engine.
+
+### Prerequisites (macOS)
+To compile the app yourself without a full Xcode installation, you need the macOS Command Line Tools and the QuickJS library:
+1. Install Command Line Tools: `xcode-select --install`
+2. Install QuickJS (via Homebrew): `brew install quickjs`
+
+### Compilation
+The project includes a `build.sh` script to automate compilation. Run the following command from the project root:
+```bash
+./build.sh
+```
+This script will compile the Metal shaders (`xcrun metal`), the QuickJS C bridge (`cc`), the Swift application (`swiftc`), and bundle everything into `RedCube.app`.
