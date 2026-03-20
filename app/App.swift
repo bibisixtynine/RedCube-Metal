@@ -479,6 +479,7 @@ struct CLITextField: NSViewRepresentable {
     var onCommit: () -> Void
     var onUpArrow: () -> Void
     var onDownArrow: () -> Void
+    var onTab: () -> Void
     
     func makeNSView(context: Context) -> NSTextField {
         let textField = NSTextField()
@@ -523,6 +524,9 @@ struct CLITextField: NSViewRepresentable {
                 return true
             } else if commandSelector == #selector(NSResponder.insertNewline(_:)) {
                 parent.onCommit()
+                return true
+            } else if commandSelector == #selector(NSResponder.insertTab(_:)) {
+                parent.onTab()
                 return true
             }
             return false
@@ -574,6 +578,8 @@ struct CLIView: View {
                     navigateHistory(direction: -1)
                 }, onDownArrow: {
                     navigateHistory(direction: 1)
+                }, onTab: {
+                    handleAutocomplete()
                 })
                 .frame(height: 22)
             }
@@ -585,6 +591,20 @@ struct CLIView: View {
     @State private var history: [String] = []
     @State private var historyIndex: Int = -1
     @State private var tempInput: String = ""
+    
+    let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log"]
+
+    func handleAutocomplete() {
+        let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+        guard let lastPart = parts.last, !lastPart.isEmpty else { return }
+        
+        let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
+        if let firstMatch = matches.first {
+            // Very basic: just replace the last part
+            let prefix = String(input.dropLast(lastPart.count))
+            input = prefix + firstMatch
+        }
+    }
 
     func navigateHistory(direction: Int) {
         if history.isEmpty { return }
