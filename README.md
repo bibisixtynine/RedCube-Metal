@@ -46,6 +46,10 @@ for (let x = -1; x <= 1; x = x + 0.5) {
 - **Live Execution:** Pressing `Run` (or `Cmd + R`) executes the JavaScript code and **adds** the new cubes to the existing scene.
 - **3D Support:** The `drawCube(x, y, z, size)` function allows positioning objects anywhere in 3D space.
 - **Camera Control:** The `setCamera(px, py, pz, tx, ty, tz)` function allows you to position the camera (`px, py, pz`) and point it at a target (`tx, ty, tz`).
+- **Interaction Hook:** Define a global `_onEvent(type, x, y)` function in your JS to react to trackpad events:
+    - `type === "scroll"`: Two-finger scroll (deltas in `x, y`).
+    - `type === "zoom"`: Pinch-to-zoom (magnification in `x`).
+    - `type === "drag"`: Mouse/Trackpad drag (deltas in `x, y`).
 - **Real-time Animation Control:** Pause and resume the continuous cube rotation to inspect the scene.
 - **Scene Reloading:** Pressing `Reload` clears all objects from the scene and executes the current script from scratch.
 - **Load & Save Scripts:** Native macOS dialogs allow you to open `.js` files from your computer and save your editor's code directly to the filesystem.

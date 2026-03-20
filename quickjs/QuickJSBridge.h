@@ -9,6 +9,7 @@ typedef void (*SetCameraCallback)(float px, float py, float pz, float tx, float 
 void qjs_init(DrawCubeCallback draw_callback, SetCameraCallback camera_callback);
 void qjs_run_script(const char *filename);
 void qjs_run_code(const char *code);
+void qjs_send_event(const char *type, double x, double y);
 void qjs_cleanup(void);
 
 #endif /* QuickJSBridge_h */

@@ -108,6 +108,30 @@ void qjs_run_code(const char *code) {
     fflush(stdout);
 }
 
+void qjs_send_event(const char *type, double x, double y) {
+    if (!ctx) return;
+    
+    JSValue global_obj = JS_GetGlobalObject(ctx);
+    JSValue func = JS_GetPropertyStr(ctx, global_obj, "_onEvent");
+    
+    if (JS_IsFunction(ctx, func)) {
+        JSValue args[3];
+        args[0] = JS_NewString(ctx, type);
+        args[1] = JS_NewFloat64(ctx, x);
+        args[2] = JS_NewFloat64(ctx, y);
+        
+        JSValue ret = JS_Call(ctx, func, global_obj, 3, args);
+        
+        JS_FreeValue(ctx, args[0]);
+        JS_FreeValue(ctx, args[1]);
+        JS_FreeValue(ctx, args[2]);
+        JS_FreeValue(ctx, ret);
+    }
+    
+    JS_FreeValue(ctx, func);
+    JS_FreeValue(ctx, global_obj);
+}
+
 void qjs_cleanup(void) {
     printf("qjs_cleanup\n");
     fflush(stdout);

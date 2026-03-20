@@ -1,9 +1,25 @@
 import SwiftUI
 import MetalKit
 
+class InputMTKView: MTKView {
+    override var acceptsFirstResponder: Bool { true }
+    
+    override func scrollWheel(with event: NSEvent) {
+        Renderer.shared.handleScroll(deltaX: Float(event.scrollingDeltaX), deltaY: Float(event.scrollingDeltaY))
+    }
+    
+    override func mouseDragged(with event: NSEvent) {
+        Renderer.shared.handleDrag(dx: Float(event.deltaX), dy: Float(event.deltaY))
+    }
+    
+    override func magnify(with event: NSEvent) {
+        Renderer.shared.handleMagnify(delta: Float(event.magnification))
+    }
+}
+
 struct MetalView: NSViewRepresentable {
     func makeNSView(context: Context) -> MTKView {
-        let mtkView = MTKView()
+        let mtkView = InputMTKView()
         let renderer = Renderer.shared
         mtkView.device = renderer.device
         mtkView.delegate = renderer

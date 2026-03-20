@@ -136,6 +136,18 @@ class Renderer: NSObject, MTKViewDelegate {
         cameraTarget = [tx, ty, tz]
     }
     
+    func handleScroll(deltaX: Float, deltaY: Float) {
+        qjs_send_event("scroll", Double(deltaX), Double(deltaY))
+    }
+    
+    func handleDrag(dx: Float, dy: Float) {
+        qjs_send_event("drag", Double(dx), Double(dy))
+    }
+    
+    func handleMagnify(delta: Float) {
+        qjs_send_event("zoom", Double(delta), 0)
+    }
+    
     func mtkView(_ view: MTKView, drawableSizeWillChange size: CGSize) {}
     
     func draw(in view: MTKView) {
