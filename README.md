@@ -9,9 +9,9 @@ The primary goal of this project is to demonstrate how to bridge a fast, compile
 ## Architecture & Design
 The application is structured into three main layers:
 
-1. **User Interface (SwiftUI):** A split-pane macOS layout containing a live Metal canvas and a live JavaScript text editor. It provides controls to run code, pause/resume animations, and reload the scene.
-2. **Graphics Engine (Metal & MetalKit):** A custom `Renderer` class handles the graphics pipeline, vertex processing, shader execution, and instanced drawing of 3D cubes. It calculates camera projections and model transformations (such as continuous rotation).
-3. **Scripting Engine (QuickJS):** A C-based bridge (`QuickJSBridge.c/.h`) embeds the QuickJS runtime into the Swift app. It exposes native Swift functions to the JavaScript environment, such as the `drawCube` callback, allowing JS scripts to command the Metal renderer.
+1. **User Interface (SwiftUI):** A modern macOS layout containing a live Metal canvas and a live JavaScript text editor. Features centered icon-based controls (SF Symbols) and an external resizable Help window.
+2. **Graphics Engine (Metal & MetalKit):** A custom `Renderer` class handles the graphics pipeline, 24-vertex cube geometry (for flat shading), and directional lighting. Supports instanced drawing of up to 10,000 cubes.
+3. **Scripting Engine (QuickJS):** A C-based bridge (`QuickJSBridge.c/.h`) embeds the QuickJS runtime. It exposes native functions like `drawCube` (with hex color support) and handles high-frequency frame callbacks.
 
 ## Libraries and Frameworks Used
 - **SwiftUI:** For building the modern, reactive macOS user interface.
@@ -23,39 +23,37 @@ The application is structured into three main layers:
 You can interactively populate the 3D scene by writing JavaScript in the editor. 
 
 **Exposed API:**
-- `drawCube(x, y, size)`: Renders a cube at the specified `(x, y)` coordinates in 3D space with the given `size`.
+- `drawCube(x, y, z, size, color?)`: Renders a cube at `(x, y, z)` with a given `size`. The `color` parameter is an optional hex string in `#aarrggbb` format (e.g., `"#80ff0000"` for semi-transparent red).
+- `clearCubes()`: Clears the scene (required for animation).
+- `setCamera(px, py, pz, tx, ty, tz)`: Positions the camera and its target.
+- `requestAnimationFrame(callback)`: Standard JS animation loop at 60fps.
 
 **Example Usage:**
 You can write loops, algorithms, or generative scripts to create complex structures:
 
 ```javascript
-// Position the camera at (3, 3, 3) looking at (0, 0, 0)
+// Position the camera
 setCamera(3, 3, 3, 0, 0, 0);
 
-// A simple 3D grid of cubes
+// A simple 3D grid of colored cubes
 for (let x = -1; x <= 1; x = x + 0.5) {
     for (let y = -1; y <= 1; y = y + 0.5) {
-        for (let z = -1; z <= 1; z = z + 0.5) {
-            drawCube(x, y, z, 0.1);
-        }
+        // Red to yellow gradient based on position
+        const green = Math.floor((y + 1) / 2 * 255).toString(16).padStart(2, '0');
+        const color = "#ffff" + green + "00"; 
+        drawCube(x, y, 0, 0.1, color);
     }
 }
 ```
 
-**Features:**
-- **Live Execution:** Pressing `Run` (or `Cmd + R`) executes the JavaScript code and **adds** the new cubes to the existing scene.
-- **3D Support:** The `drawCube(x, y, z, size)` function allows positioning objects anywhere in 3D space.
-- **Camera Control:** The `setCamera(px, py, pz, tx, ty, tz)` function allows you to position the camera (`px, py, pz`) and point it at a target (`tx, ty, tz`).
-- **Animation Loop:**
-    - `requestAnimationFrame(callback)`: Schedules a function to run before the next frame (60fps).
-    - `clearCubes()`: Clears all cubes from the scene, essential for frame-by-frame animation.
-- **Interaction Hook:** Define a global `_onEvent(type, x, y)` function in your JS to react to trackpad events:
-    - `type === "scroll"`: Two-finger scroll (deltas in `x, y`).
-    - `type === "zoom"`: Pinch-to-zoom (magnification in `x`).
-    - `type === "drag"`: Mouse/Trackpad drag (deltas in `x, y`).
-- **Real-time Animation Control:** Pause and resume the continuous cube rotation to inspect the scene.
-- **Scene Reloading:** Pressing `Reload` clears all objects from the scene and executes the current script from scratch.
-- **Load & Save Scripts:** Native macOS dialogs allow you to open `.js` files from your computer and save your editor's code directly to the filesystem.
+## Features
+- **Dynamic Lighting**: Real-time directional lighting (Lambertian) ensures that 3D shapes are clearly defined, even for solid-colored objects.
+- **External Help Window**: A dedicated, movable, and resizable macOS panel containing documentation and interactive examples that can be inserted directly at your cursor.
+- **Modernized UI**: Sleek, centered toolbar using SF Symbols for common actions (Load, Save, Play, Pause, Help).
+- **Trackpad Interaction**: Built-in support for scroll, zoom (pinch), and drag through the `_onEvent` hook.
+- **High Performance**: Native Metal instancing allows for thousands of cubes at 60 FPS.
+- **Project Gallery**: Includes advanced examples like `cassecube.js` (a full 3D breakout game).
+- **Load & Save Scripts**: Native macOS dialogs accessible via icons in the toolbar.
 
 ## Technical Limits
 The renderer currently supports up to **10,000 cubes** simultaneously. 
