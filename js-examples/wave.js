@@ -1,30 +1,32 @@
-// Vague de cubes dynamique
-let grid = [];
-let SIZE = 6;
+// --- EXEMPLE WAVE ---
+// Une vague mathématique de cubes.
 
-for (let x = -SIZE; x <= SIZE; x++) {
-    for (let z = -SIZE; z <= SIZE; z++) {
+let cubes = [];
+let size = 10;
+
+for (let x = -size; x <= size; x++) {
+    for (let z = -size; z <= size; z++) {
         let id = spawn('box');
-        setScale(id, 0.8, 0.1, 0.8);
-        grid.push({id, x, z});
+        setPosition(id, x, 0, z);
+        setScale(id, 0.8, 0.8, 0.8);
+        cubes.push({ id: id, x: x, z: z });
     }
 }
 
-setCamera(0, 15, 20, 0, 0, 0);
+setCamera(15, 15, 15, 0, 0, 0);
 
 function loop(t) {
-    grid.forEach(cell => {
-        let dist = Math.sqrt(cell.x*cell.x + cell.z*cell.z);
-        let y = Math.sin(t * 0.003 - dist * 0.7) * 2;
-        setPosition(cell.id, cell.x, y, cell.z);
+    let time = t * 0.002;
+    cubes.forEach(c => {
+        let dist = Math.sqrt(c.x*c.x + c.z*c.z);
+        let y = Math.sin(dist * 0.5 - time) * 2;
+        setPosition(c.id, c.x, y, c.z);
         
-        // Couleur changeante selon la hauteur
+        // Couleur basée sur la hauteur
         let r = (y + 2) / 4;
-        let b = 1 - r;
-        setColor(cell.id, r, 0.2, b, 1, 0.5, 0.3);
+        setColor(c.id, r, 0.3, 1-r, 1, 0.5, 0.5);
     });
     requestAnimationFrame(loop);
 }
 
-console.log("Vague de cubes lancée !");
 loop(0);

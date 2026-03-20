@@ -1,38 +1,35 @@
-// Interaction et rotation
-let core = spawn('box', 'Core');
-setScale(core, 2, 2, 2);
-setColor(core, 0.2, 0.8, 0.2, 0.8, 0.9, 0.1);
+// --- EXEMPLE INTERACTIF ---
+// Manipulez les objets avec votre trackpad !
 
-let ring = [];
-for (let i = 0; i < 12; i++) {
-    let id = spawn('sphere');
-    setScale(id, 0.4, 0.4, 0.4);
-    ring.push(id);
+let cubes = [];
+let count = 5;
+
+// Créer une grille de cubes
+for (let x = -count; x <= count; x++) {
+    for (let z = -count; z <= count; z++) {
+        let id = spawn('box');
+        setPosition(id, x * 1.5, 0, z * 1.5);
+        setColor(id, 0.4, 0.4, 0.5, 1, 0, 0.8);
+        cubes.push({ id: id, ox: x * 1.5, oz: z * 1.5 });
+    }
 }
 
-setCamera(10, 10, 10, 0, 0, 0);
+setCamera(0, 15, 20, 0, 0, 0);
 
-let rotationSpeed = 0.001;
+let lightDist = 1;
 
 globalThis._onEvent = function(type, x, y) {
-    if (type === 'scroll') {
-        rotationSpeed += x * 0.0001;
-        console.log("Vitesse de rotation : " + rotationSpeed);
+    if (type === 'drag') {
+        // Faire varier la couleur en fonction du drag
+        cubes.forEach(c => {
+            setColor(c.id, Math.abs(x), Math.abs(y), 0.5, 1, 0, 1);
+        });
+    } else if (type === 'scroll') {
+        // Faire monter/descendre les cubes
+        cubes.forEach(c => {
+            setPosition(c.id, c.ox, y * 0.1, c.oz);
+        });
     }
 };
 
-function loop(t) {
-    let angle = t * rotationSpeed;
-    setRotation(core, angle, angle, 0);
-    
-    ring.forEach((id, i) => {
-        let a = angle + (i / ring.length) * Math.PI * 2;
-        setPosition(id, Math.cos(a) * 4, Math.sin(a) * 4, 0);
-        setColor(id, 0.5 + Math.sin(a)*0.5, 0.5, 1, 1);
-    });
-    
-    requestAnimationFrame(loop);
-}
-
-console.log("Utilisez le scroll pour changer la vitesse !");
-loop(0);
+console.log("Bougez le trackpad pour interagir !");
