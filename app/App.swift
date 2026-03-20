@@ -21,8 +21,13 @@ struct MetalApp: App {
     }
 }
 
+class CodeStore: ObservableObject {
+    static let shared = CodeStore()
+    @Published var jsCode: String = ""
+}
+
 struct ContentView: View {
-    @State private var jsCode: String = ""
+    @ObservedObject var codeStore = CodeStore.shared
     @State private var isPaused: Bool = false
     @State private var hasInitialized: Bool = false
     
@@ -43,7 +48,7 @@ struct ContentView: View {
                 }
                 .padding(.bottom, 4)
                 
-                TextEditor(text: $jsCode)
+                TextEditor(text: $codeStore.jsCode)
                     .font(.system(.body, design: .monospaced))
                     .frame(width: 400)
                     .cornerRadius(8)
@@ -81,14 +86,14 @@ struct ContentView: View {
         print("loadInitialCode starting...")
         if let path = MetalApp.scriptPath,
            let content = try? String(contentsOfFile: path, encoding: .utf8) {
-            jsCode = content
+            codeStore.jsCode = content
             print("Loaded code from file: \(path)")
         } else if let resourceURL = Bundle.main.url(forResource: "default-example", withExtension: "js"),
                   let content = try? String(contentsOf: resourceURL, encoding: .utf8) {
-            jsCode = content
+            codeStore.jsCode = content
             print("Loaded code from bundle: scene.js")
         } else {
-            jsCode = "drawCube(0, 0, 1.0);"
+            codeStore.jsCode = "drawCube(0, 0, 1.0);"
             print("Using default code.")
         }
         
@@ -98,7 +103,7 @@ struct ContentView: View {
     
     func runCode() {
         print("runCode: Calling qjs_run_code...")
-        qjs_run_code(jsCode)
+        qjs_run_code(codeStore.jsCode)
         print("runCode: qjs_run_code returned.")
     }
     
@@ -118,7 +123,7 @@ struct ContentView: View {
         panel.canChooseDirectories = false
         if panel.runModal() == .OK, let url = panel.url {
             if let content = try? String(contentsOf: url, encoding: .utf8) {
-                jsCode = content
+                codeStore.jsCode = content
                 print("Loaded file from \(url.path)")
             }
         }
@@ -134,7 +139,7 @@ struct ContentView: View {
         panel.nameFieldStringValue = "scene.js"
         if panel.runModal() == .OK, let url = panel.url {
             do {
-                try jsCode.write(to: url, atomically: true, encoding: .utf8)
+                try codeStore.jsCode.write(to: url, atomically: true, encoding: .utf8)
                 print("Saved file to \(url.path)")
             } catch {
                 print("Failed to save file: \(error)")
@@ -222,6 +227,15 @@ struct HelpView: View {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.writeObjects([example as NSString])
                     }
+                
+                Button(action: {
+                    CodeStore.shared.jsCode = example
+                }) {
+                    Label("Insérer dans l'éditeur", systemImage: "arrow.right.doc.on.clipboard")
+                        .padding(4)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
             }
         }
         .padding()
