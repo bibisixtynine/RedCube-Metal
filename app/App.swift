@@ -569,23 +569,45 @@ struct CLIView: View {
             }
             .background(Color.black.opacity(0.05))
             
-            if let help = currentHelp {
+            if let doc = currentHelp {
                 Divider()
-                HStack {
-                    Text("ℹ️ \(help)")
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundColor(.secondary)
-                        .padding(.horizontal)
-                        .padding(.vertical, 4)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    Button(action: { currentHelp = nil }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text(doc.signature)
+                            .font(.system(.body, design: .monospaced))
+                            .bold()
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Button(action: { currentHelp = nil }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .buttonStyle(.plain)
-                    .padding(.trailing, 8)
+                    
+                    Text(doc.description)
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                        .padding(.bottom, 2)
+                    
+                    if !doc.parameters.isEmpty {
+                        VStack(alignment: .leading, spacing: 2) {
+                            ForEach(doc.parameters) { param in
+                                HStack(alignment: .top) {
+                                    Text("• \(param.name):")
+                                        .font(.system(.caption, design: .monospaced))
+                                        .bold()
+                                        .frame(width: 100, alignment: .leading)
+                                    Text(param.desc)
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
                 }
+                .padding(10)
+                .background(Color(NSColor.windowBackgroundColor))
                 .transition(.opacity)
             } else if !suggestions.isEmpty {
                 Divider()
@@ -635,22 +657,99 @@ struct CLIView: View {
     @State private var historyIndex: Int = -1
     @State private var tempInput: String = ""
     @State private var suggestions: [String] = []
-    @State private var currentHelp: String? = nil
+    @State private var currentHelp: FunctionDoc? = nil
     
     let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log"]
     
-    let jsFunctionHelp: [String: String] = [
-        "spawn": "spawn(type, x, y, z) - Spawns a 3D object ('cube', 'sphere', 'cone', 'text')",
-        "setPosition": "setPosition(id, x, y, z) - Sets the position of an entity",
-        "setRotation": "setRotation(id, x, y, z) - Sets the rotation in degrees",
-        "setScale": "setScale(id, x, y, z) - Sets the scale",
-        "setColor": "setColor(id, r, g, b, a) - Sets the color (RGBA 0.0-1.0)",
-        "remove": "remove(id) - Removes an entity",
-        "setCamera": "setCamera(x, y, z, lookAtX, lookAtY, lookAtZ) - Moves the camera",
-        "setPhysics": "setPhysics(id, mass, restitution, friction) - Sets physics properties",
-        "setTexture": "setTexture(id, path) - Sets an image texture from a file path",
-        "requestAnimationFrame": "requestAnimationFrame(callback) - Schedules a function for the next frame",
-        "console.log": "console.log(msg) - Prints a message to the debug window"
+    struct FunctionDoc {
+        let signature: String
+        let description: String
+        let parameters: [ParamDoc]
+        
+        struct ParamDoc: Identifiable {
+            let id = UUID()
+            let name: String
+            let desc: String
+        }
+    }
+    
+    let jsFunctionHelp: [String: FunctionDoc] = [
+        "spawn": FunctionDoc(
+            signature: "spawn(type, x, y, z)",
+            description: "Spawns a new 3D entity in the scene.",
+            parameters: [
+                .init(name: "type", desc: "'cube', 'sphere', 'cone', 'text'"),
+                .init(name: "x, y, z", desc: "Position coordinates")
+            ]),
+        "setPosition": FunctionDoc(
+            signature: "setPosition(id, x, y, z)",
+            description: "Moves an entity to a new position.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID returned by spawn"),
+                .init(name: "x, y, z", desc: "New coordinates")
+            ]),
+        "setRotation": FunctionDoc(
+            signature: "setRotation(id, x, y, z)",
+            description: "Sets the rotation of an entity.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID"),
+                .init(name: "x, y, z", desc: "Euler angles in degrees")
+            ]),
+        "setScale": FunctionDoc(
+            signature: "setScale(id, x, y, z)",
+            description: "Sets the scale of an entity.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID"),
+                .init(name: "x, y, z", desc: "Scale factors (default 1.0)")
+            ]),
+        "setColor": FunctionDoc(
+            signature: "setColor(id, r, g, b, a)",
+            description: "Changes the color and opacity.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID"),
+                .init(name: "r, g, b, a", desc: "RGBA values (0.0 to 1.0)")
+            ]),
+        "remove": FunctionDoc(
+            signature: "remove(id)",
+            description: "Removes an entity from the scene.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID to remove")
+            ]),
+        "setCamera": FunctionDoc(
+            signature: "setCamera(x, y, z, tx, ty, tz)",
+            description: "Positions the camera and its target.",
+            parameters: [
+                .init(name: "x, y, z", desc: "Camera position"),
+                .init(name: "tx, ty, tz", desc: "Target (look-at) point")
+            ]),
+        "setPhysics": FunctionDoc(
+            signature: "setPhysics(id, mass, rest, fric)",
+            description: "Configures physics for an entity.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID"),
+                .init(name: "mass", desc: "Mass (e.g., 1.0)"),
+                .init(name: "rest", desc: "Restitution / Bounciness"),
+                .init(name: "fric", desc: "Friction coefficient")
+            ]),
+        "setTexture": FunctionDoc(
+            signature: "setTexture(id, path)",
+            description: "Applies an image texture.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID"),
+                .init(name: "path", desc: "Absolute file path to image")
+            ]),
+        "requestAnimationFrame": FunctionDoc(
+            signature: "requestAnimationFrame(callback)",
+            description: "Schedules a function for the next frame.",
+            parameters: [
+                .init(name: "callback", desc: "Function to execute")
+            ]),
+        "console.log": FunctionDoc(
+            signature: "console.log(msg)",
+            description: "Prints to the debug log.",
+            parameters: [
+                .init(name: "msg", desc: "The message to display")
+            ])
     ]
 
     func updateSuggestions(for text: String) {
