@@ -21,6 +21,7 @@ class RealityRenderer: NSObject {
     
     var arView: ARView?
     private var draggedEntity: Entity?
+    private var previousPhysicsMode: PhysicsBodyMode?
     private var dragPlane: Float = 0
     private var dragOffset: SIMD3<Float> = .zero
     private var entities: [String: Entity] = [:]
@@ -246,8 +247,11 @@ class RealityRenderer: NSObject {
                 
                 // Set to kinematic if it has physics to avoid jitter while dragging
                 if var physics = target.components[PhysicsBodyComponent.self] {
+                    self.previousPhysicsMode = physics.mode
                     physics.mode = .kinematic
                     target.components[PhysicsBodyComponent.self] = physics
+                } else {
+                    self.previousPhysicsMode = nil
                 }
                 
                 // Calculate drag plane (distance from camera)
@@ -278,13 +282,15 @@ class RealityRenderer: NSObject {
     func endDragging() {
         guard let entity = draggedEntity else { return }
         
-        // Restore physics mode to dynamic if it was kinematic
-        if var physics = entity.components[PhysicsBodyComponent.self] {
-            physics.mode = .dynamic
+        // Restore physics mode to its original state
+        if let previousMode = previousPhysicsMode,
+           var physics = entity.components[PhysicsBodyComponent.self] {
+            physics.mode = previousMode
             entity.components[PhysicsBodyComponent.self] = physics
         }
         
         draggedEntity = nil
+        previousPhysicsMode = nil
     }
 }
 
