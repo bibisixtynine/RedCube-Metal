@@ -85,15 +85,15 @@ class Renderer: NSObject, MTKViewDelegate {
         
         let vertexDescriptor = MTLVertexDescriptor()
         vertexDescriptor.attributes[0].format = .float3
-        vertexDescriptor.attributes[0].offset = 0
+        vertexDescriptor.attributes[0].offset = 0 // position
         vertexDescriptor.attributes[0].bufferIndex = 0
         vertexDescriptor.attributes[1].format = .float3
-        vertexDescriptor.attributes[1].offset = 12
+        vertexDescriptor.attributes[1].offset = 16 // normal (simd_float3 is 16-byte aligned)
         vertexDescriptor.attributes[1].bufferIndex = 0
         vertexDescriptor.attributes[2].format = .float4
-        vertexDescriptor.attributes[2].offset = 24
+        vertexDescriptor.attributes[2].offset = 32 // color
         vertexDescriptor.attributes[2].bufferIndex = 0
-        vertexDescriptor.layouts[0].stride = 40
+        vertexDescriptor.layouts[0].stride = 48
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
         
         do {
@@ -149,7 +149,7 @@ class Renderer: NSObject, MTKViewDelegate {
             Vertex(position: v1, normal: [0, -1, 0], color: [0, 1, 1, 1]),
             Vertex(position: v0, normal: [0, -1, 0], color: [0, 1, 1, 1])
         ]
-        vertexBuffer = device.makeBuffer(bytes: vertices, length: vertices.count * 40, options: [])
+        vertexBuffer = device.makeBuffer(bytes: vertices, length: vertices.count * MemoryLayout<Vertex>.stride, options: [])
         
         var indices: [UInt16] = []
         for i in 0..<6 {
