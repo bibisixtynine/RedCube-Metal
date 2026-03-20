@@ -255,14 +255,24 @@ struct HelpView: View {
                 .padding()
             }
         }
-        .frame(width: 600, height: 700)
+        .frame(minWidth: 400, minHeight: 400) // Allow resizing
     }
     
     func helpSection(title: String, description: String, example: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.headline)
-                .foregroundColor(.blue)
+            HStack {
+                Text(title)
+                    .font(.headline)
+                    .foregroundColor(.blue)
+                Spacer()
+                Button(action: {
+                    CodeStore.shared.insertCode(example)
+                }) {
+                    Image(systemName: "plus.square.on.square")
+                        .help("Insérer à la position du curseur")
+                }
+                .buttonStyle(.plain)
+            }
             
             Text(description)
                 .font(.body)
@@ -285,15 +295,6 @@ struct HelpView: View {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.writeObjects([example as NSString])
                     }
-                
-                Button(action: {
-                    CodeStore.shared.insertCode(example)
-                }) {
-                    Label("Insérer à la position du curseur", systemImage: "arrow.right.doc.on.clipboard")
-                        .padding(4)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
             }
         }
         .padding()
@@ -322,7 +323,7 @@ class HelpWindowManager {
         if window == nil {
             let panel = NSPanel(
                 contentRect: NSRect(x: 100, y: 100, width: 600, height: 700),
-                styleMask: [.titled, .closable, .resizable, .utilityWindow, .hudWindow, .nonactivatingPanel],
+                styleMask: [.titled, .closable, .resizable, .miniaturizable, .nonactivatingPanel],
                 backing: .buffered,
                 defer: false
             )
