@@ -288,6 +288,18 @@ struct HelpView: View {
                         )
                         
                         helpSection(
+                            title: "setPhysics(id, mode)",
+                            description: "Active la physique ('static' ou 'dynamic').",
+                            example: "setPhysics(id, 'dynamic');"
+                        )
+                        
+                        helpSection(
+                            title: "setTexture(id, name)",
+                            description: "Applique une texture (ex: 'grid').",
+                            example: "setTexture(id, 'grid');"
+                        )
+                        
+                        helpSection(
                             title: "setCamera(px, py, pz, tx, ty, tz)",
                             description: "Positionne la caméra (px, py, pz) et définit la cible (tx, ty, tz).",
                             example: "setCamera(5, 5, 5, 0, 0, 0);"
@@ -297,6 +309,12 @@ struct HelpView: View {
                             title: "requestAnimationFrame(callback)",
                             description: "Enregistre une boucle d'animation.",
                             example: "function loop(t) {\n  setRotation(id, 0, t * 0.001, 0);\n  requestAnimationFrame(loop);\n}\nloop(0);"
+                        )
+
+                        helpSection(
+                            title: "_onEvent(type, x, y)",
+                            description: "Hook global pour les interactions (drag, scroll, zoom).",
+                            example: "globalThis._onEvent = function(type, x, y) {\n  if (type === 'drag') camRotY -= x * 0.01;\n};"
                         )
                     }
                 }
