@@ -474,6 +474,62 @@ class HelpWindowManager {
     }
 }
 
+struct CLITextField: NSViewRepresentable {
+    @Binding var text: String
+    var onCommit: () -> Void
+    var onUpArrow: () -> Void
+    var onDownArrow: () -> Void
+    
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField()
+        textField.delegate = context.coordinator
+        textField.isBezeled = false
+        textField.drawsBackground = false
+        textField.focusRingType = .none
+        textField.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        textField.placeholderString = "Commande JS..."
+        return textField
+    }
+    
+    func updateNSView(_ nsView: NSTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+    }
+    
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+    
+    class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: CLITextField
+        
+        init(_ parent: CLITextField) {
+            self.parent = parent
+        }
+        
+        func controlTextDidChange(_ obj: Notification) {
+            if let textField = obj.object as? NSTextField {
+                parent.text = textField.stringValue
+            }
+        }
+        
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if commandSelector == #selector(NSResponder.moveUp(_:)) {
+                parent.onUpArrow()
+                return true
+            } else if commandSelector == #selector(NSResponder.moveDown(_:)) {
+                parent.onDownArrow()
+                return true
+            } else if commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                parent.onCommit()
+                return true
+            }
+            return false
+        }
+    }
+}
+
 struct CLIView: View {
     @State private var input: String = ""
     @State private var log: [CLILine] = []
@@ -512,21 +568,51 @@ struct CLIView: View {
                 Text(">")
                     .font(.system(.body, design: .monospaced))
                     .bold()
-                TextField("Commande JS...", text: $input)
-                    .textFieldStyle(.plain)
-                    .font(.system(.body, design: .monospaced))
-                    .onSubmit {
-                        sendCommand()
-                    }
+                CLITextField(text: $input, onCommit: {
+                    sendCommand()
+                }, onUpArrow: {
+                    navigateHistory(direction: -1)
+                }, onDownArrow: {
+                    navigateHistory(direction: 1)
+                })
+                .frame(height: 22)
             }
             .padding()
         }
         .frame(minWidth: 500, minHeight: 300)
     }
     
+    @State private var history: [String] = []
+    @State private var historyIndex: Int = -1
+    @State private var tempInput: String = ""
+
+    func navigateHistory(direction: Int) {
+        if history.isEmpty { return }
+        
+        if historyIndex == -1 {
+            tempInput = input
+        }
+        
+        let newIndex = historyIndex + direction
+        if newIndex >= -1 && newIndex < history.count {
+            historyIndex = newIndex
+            if historyIndex == -1 {
+                input = tempInput
+            } else {
+                // Return in reverse order (last command first)
+                input = history[history.count - 1 - historyIndex]
+            }
+        }
+    }
+    
     func sendCommand() {
         let command = input
         guard !command.isEmpty else { return }
+        
+        if history.last != command {
+            history.append(command)
+        }
+        historyIndex = -1
         
         log.append(CLILine(text: command, isResponse: false))
         input = ""
