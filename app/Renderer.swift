@@ -4,6 +4,7 @@ import Foundation
 
 struct Vertex {
     let position: simd_float3
+    let normal: simd_float3
     let color: simd_float4
 }
 
@@ -86,10 +87,13 @@ class Renderer: NSObject, MTKViewDelegate {
         vertexDescriptor.attributes[0].format = .float3
         vertexDescriptor.attributes[0].offset = 0
         vertexDescriptor.attributes[0].bufferIndex = 0
-        vertexDescriptor.attributes[1].format = .float4
-        vertexDescriptor.attributes[1].offset = 16
+        vertexDescriptor.attributes[1].format = .float3
+        vertexDescriptor.attributes[1].offset = 12
         vertexDescriptor.attributes[1].bufferIndex = 0
-        vertexDescriptor.layouts[0].stride = 32
+        vertexDescriptor.attributes[2].format = .float4
+        vertexDescriptor.attributes[2].offset = 24
+        vertexDescriptor.attributes[2].bufferIndex = 0
+        vertexDescriptor.layouts[0].stride = 40
         pipelineDescriptor.vertexDescriptor = vertexDescriptor
         
         do {
@@ -103,22 +107,55 @@ class Renderer: NSObject, MTKViewDelegate {
         depthDescriptor.isDepthWriteEnabled = true
         depthState = device.makeDepthStencilState(descriptor: depthDescriptor)
         
-        // Cube vertices
-        let vertices = [
-            Vertex(position: [-0.5, -0.5,  0.5], color: [1, 0, 0, 1]),
-            Vertex(position: [ 0.5, -0.5,  0.5], color: [0, 1, 0, 1]),
-            Vertex(position: [ 0.5,  0.5,  0.5], color: [0, 0, 1, 1]),
-            Vertex(position: [-0.5,  0.5,  0.5], color: [1, 1, 0, 1]),
-            Vertex(position: [-0.5, -0.5, -0.5], color: [1, 0, 1, 1]),
-            Vertex(position: [ 0.5, -0.5, -0.5], color: [0, 1, 1, 1]),
-            Vertex(position: [ 0.5,  0.5, -0.5], color: [1, 1, 1, 1]),
-            Vertex(position: [-0.5,  0.5, -0.5], color: [0.5, 0.5, 0.5, 1])
-        ]
-        vertexBuffer = device.makeBuffer(bytes: vertices, length: vertices.count * 32, options: [])
+        // Cube vertices (24 vertices for flat shading)
+        let v0: simd_float3 = [-0.5, -0.5,  0.5]
+        let v1: simd_float3 = [ 0.5, -0.5,  0.5]
+        let v2: simd_float3 = [ 0.5,  0.5,  0.5]
+        let v3: simd_float3 = [-0.5,  0.5,  0.5]
+        let v4: simd_float3 = [-0.5, -0.5, -0.5]
+        let v5: simd_float3 = [ 0.5, -0.5, -0.5]
+        let v6: simd_float3 = [ 0.5,  0.5, -0.5]
+        let v7: simd_float3 = [-0.5,  0.5, -0.5]
         
-        let indices: [UInt16] = [
-            0, 1, 2, 2, 3, 0, 1, 5, 6, 6, 2, 1, 5, 4, 7, 7, 6, 5, 4, 0, 3, 3, 7, 4, 3, 2, 6, 6, 7, 3, 4, 5, 1, 1, 0, 4
+        let vertices = [
+            // Front
+            Vertex(position: v0, normal: [0, 0, 1], color: [1, 0, 0, 1]),
+            Vertex(position: v1, normal: [0, 0, 1], color: [1, 0, 0, 1]),
+            Vertex(position: v2, normal: [0, 0, 1], color: [1, 0, 0, 1]),
+            Vertex(position: v3, normal: [0, 0, 1], color: [1, 0, 0, 1]),
+            // Back
+            Vertex(position: v5, normal: [0, 0, -1], color: [0, 1, 0, 1]),
+            Vertex(position: v4, normal: [0, 0, -1], color: [0, 1, 0, 1]),
+            Vertex(position: v7, normal: [0, 0, -1], color: [0, 1, 0, 1]),
+            Vertex(position: v6, normal: [0, 0, -1], color: [0, 1, 0, 1]),
+            // Left
+            Vertex(position: v4, normal: [-1, 0, 0], color: [0, 0, 1, 1]),
+            Vertex(position: v0, normal: [-1, 0, 0], color: [0, 0, 1, 1]),
+            Vertex(position: v3, normal: [-1, 0, 0], color: [0, 0, 1, 1]),
+            Vertex(position: v7, normal: [-1, 0, 0], color: [0, 0, 1, 1]),
+            // Right
+            Vertex(position: v1, normal: [1, 0, 0], color: [1, 1, 0, 1]),
+            Vertex(position: v5, normal: [1, 0, 0], color: [1, 1, 0, 1]),
+            Vertex(position: v6, normal: [1, 0, 0], color: [1, 1, 0, 1]),
+            Vertex(position: v2, normal: [1, 0, 0], color: [1, 1, 0, 1]),
+            // Top
+            Vertex(position: v3, normal: [0, 1, 0], color: [1, 0, 1, 1]),
+            Vertex(position: v2, normal: [0, 1, 0], color: [1, 0, 1, 1]),
+            Vertex(position: v6, normal: [0, 1, 0], color: [1, 0, 1, 1]),
+            Vertex(position: v7, normal: [0, 1, 0], color: [1, 0, 1, 1]),
+            // Bottom
+            Vertex(position: v4, normal: [0, -1, 0], color: [0, 1, 1, 1]),
+            Vertex(position: v5, normal: [0, -1, 0], color: [0, 1, 1, 1]),
+            Vertex(position: v1, normal: [0, -1, 0], color: [0, 1, 1, 1]),
+            Vertex(position: v0, normal: [0, -1, 0], color: [0, 1, 1, 1])
         ]
+        vertexBuffer = device.makeBuffer(bytes: vertices, length: vertices.count * 40, options: [])
+        
+        var indices: [UInt16] = []
+        for i in 0..<6 {
+            let offset = UInt16(i * 4)
+            indices.append(contentsOf: [offset, offset+1, offset+2, offset, offset+2, offset+3])
+        }
         indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * 2, options: [])
         uniformBuffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride * maxCubes, options: [])
     }
