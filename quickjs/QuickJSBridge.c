@@ -1,6 +1,7 @@
 #include "QuickJSBridge.h"
-#include <quickjs/quickjs.h>
-#include <quickjs/quickjs-libc.h>
+#include "quickjs.h"
+#include "quickjs-libc.h"
+#include <string.h>
 
 static JSRuntime *rt;
 static JSContext *ctx;

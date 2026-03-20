@@ -49,10 +49,9 @@ A pre-compiled version of the application (`RedCube.app`) is included directly w
 This application was created without Xcode using the **Antigravity AI Assistant**. The entire application is built using terminal tools via Apple's Command Line Tools and the open-source QuickJS engine.
 
 ### Prerequisites (macOS)
-To compile the app yourself without a full Xcode installation, you need the macOS Command Line Tools and the QuickJS library:
+To compile the app yourself without a full Xcode installation, you only need the macOS Command Line Tools. The QuickJS engine source code is already included in this repository.
 1. Install Command Line Tools: `xcode-select --install`
    *(Note: This prompts a small download for the necessary compilers like `swiftc` and `metal`. It **does not** require installing the massive Xcode app.)*
-2. Install QuickJS (via Homebrew): `brew install quickjs`
 
 ### Compilation
 The project includes a `build.sh` script to automate compilation. Run the following command from the project root:
