@@ -291,11 +291,7 @@ struct ContentView: View {
 
 struct RealityKitView: NSViewRepresentable {
     func makeNSView(context: Context) -> ARView {
-        let arView = ARView(frame: .zero)
-        RealityRenderer.shared.arView = arView
-        
-        // Configuration de base
-        return arView
+        return RealityRenderer.shared.arView!
     }
     
     func updateNSView(_ nsView: ARView, context: Context) {}
