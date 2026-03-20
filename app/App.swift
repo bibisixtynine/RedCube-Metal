@@ -278,13 +278,6 @@ struct HelpView: View {
                 .font(.body)
             
             VStack(alignment: .leading) {
-                HStack {
-                    Text("Exemple (cliquez pour copier) :")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-                
                 Text(example)
                     .font(.system(.body, design: .monospaced))
                     .padding(8)
