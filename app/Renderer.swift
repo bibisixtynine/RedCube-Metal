@@ -29,6 +29,7 @@ class Renderer: NSObject, MTKViewDelegate {
     var indexBuffer: MTLBuffer!
     var uniformBuffer: MTLBuffer!
     
+    let maxCubes = 10000
     var cubes: [CubeInstance] = []
     let lock = NSRecursiveLock()
     var rotation: Float = 0
@@ -104,7 +105,7 @@ class Renderer: NSObject, MTKViewDelegate {
             0, 1, 2, 2, 3, 0, 1, 5, 6, 6, 2, 1, 5, 4, 7, 7, 6, 5, 4, 0, 3, 3, 7, 4, 3, 2, 6, 6, 7, 3, 4, 5, 1, 1, 0, 4
         ]
         indexBuffer = device.makeBuffer(bytes: indices, length: indices.count * 2, options: [])
-        uniformBuffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride * 100, options: [])
+        uniformBuffer = device.makeBuffer(length: MemoryLayout<Uniforms>.stride * maxCubes, options: [])
     }
     
     func clearCubes() {
@@ -143,10 +144,20 @@ class Renderer: NSObject, MTKViewDelegate {
         let currentCubes = cubes
         lock.unlock()
         
+        let cubeCount = min(currentCubes.count, maxCubes)
+        if cubeCount == 0 {
+            renderEncoder?.endEncoding()
+            commandBuffer?.present(drawable)
+            commandBuffer?.commit()
+            return
+        }
+        
+        let modelMatrix = Math.rotationMatrix(angle: rotation, axis: [1, 1, 0])
+        let contents = uniformBuffer.contents().bindMemory(to: Uniforms.self, capacity: maxCubes)
+        
         for (index, cube) in currentCubes.enumerated() {
-            if index >= 100 { break }
+            if index >= maxCubes { break }
             
-            let modelMatrix = Math.rotationMatrix(angle: rotation, axis: [1, 1, 0])
             var translation = Math.identityMatrix()
             translation.columns.3 = [cube.position.x, cube.position.y, cube.position.z - 5.0, 1.0]
             
@@ -156,14 +167,11 @@ class Renderer: NSObject, MTKViewDelegate {
             scale[2][2] = cube.size
             
             let mvp = projectionMatrix * translation * modelMatrix * scale
-            
-            let uniformOffset = index * MemoryLayout<Uniforms>.stride
-            let ptr = uniformBuffer.contents().advanced(by: uniformOffset).bindMemory(to: Uniforms.self, capacity: 1)
-            ptr.pointee.modelViewProjectionMatrix = mvp
-            
-            renderEncoder?.setVertexBuffer(uniformBuffer, offset: uniformOffset, index: 1)
-            renderEncoder?.drawIndexedPrimitives(type: .triangle, indexCount: 36, indexType: .uint16, indexBuffer: indexBuffer, indexBufferOffset: 0)
+            contents[index].modelViewProjectionMatrix = mvp
         }
+        
+        renderEncoder?.setVertexBuffer(uniformBuffer, offset: 0, index: 1)
+        renderEncoder?.drawIndexedPrimitives(type: .triangle, indexCount: 36, indexType: .uint16, indexBuffer: indexBuffer, indexBufferOffset: 0, instanceCount: cubeCount)
         
         renderEncoder?.endEncoding()
         commandBuffer?.present(drawable)

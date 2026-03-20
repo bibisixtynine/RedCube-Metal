@@ -16,9 +16,10 @@ struct VertexOut {
 };
 
 vertex VertexOut vertex_main(VertexIn in [[stage_in]],
-                             constant Uniforms &uniforms [[buffer(1)]]) {
+                             constant Uniforms *uniforms [[buffer(1)]],
+                             uint instanceID [[instance_id]]) {
     VertexOut out;
-    out.position = uniforms.modelViewProjectionMatrix * float4(in.position, 1.0);
+    out.position = uniforms[instanceID].modelViewProjectionMatrix * float4(in.position, 1.0);
     out.color = in.color;
     return out;
 }
