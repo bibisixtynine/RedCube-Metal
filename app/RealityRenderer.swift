@@ -188,9 +188,18 @@ class RealityRenderer: NSObject {
         entity.model?.materials = [material]
     }
     
-    func handleScroll(deltaX: Float, deltaY: Float) { qjs_send_event("scroll", Double(deltaX), Double(deltaY)) }
-    func handleDrag(dx: Float, dy: Float) { qjs_send_event("drag", Double(dx), Double(dy)) }
-    func handleMagnify(delta: Float) { qjs_send_event("zoom", Double(delta), 0) }
+    func handleScroll(deltaX: Float, deltaY: Float) { 
+        if draggedEntity != nil { return }
+        qjs_send_event("scroll", Double(deltaX), Double(deltaY)) 
+    }
+    func handleDrag(dx: Float, dy: Float) { 
+        if draggedEntity != nil { return }
+        qjs_send_event("drag", Double(dx), Double(dy)) 
+    }
+    func handleMagnify(delta: Float) { 
+        if draggedEntity != nil { return }
+        qjs_send_event("zoom", Double(delta), 0) 
+    }
     
     private func update(time: Double) {
         if isPaused { return }
