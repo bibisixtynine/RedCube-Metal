@@ -67,7 +67,7 @@ globalThis._onEvent = function(type, x, y) {
 
 function loop(t) {
     frameCount++;
-    if (frameCount % 6 === 0) {
+    if (frameCount % 5000 === 0) {
         spawnCube();
     }
     requestAnimationFrame(loop);

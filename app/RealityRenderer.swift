@@ -228,12 +228,16 @@ class RealityRenderer: NSObject {
     
     func startDragging(at point: CGPoint) {
         guard let arView = arView else { return }
+        let adjustedPoint = CGPoint(x: point.x, y: arView.bounds.height - point.y)
         
         // Entity picking
-        if let entity = arView.entity(at: point) {
+        if let entity = arView.entity(at: adjustedPoint) {
             // Traverse up to find a draggable entity (e.g. one we spawned)
             var current: Entity? = entity
-            while current != nil && !(current?.components.has(ModelComponent.self) ?? false) {
+            while current != nil {
+                if entities.values.contains(where: { $0 === current }) {
+                    break
+                }
                 current = current?.parent
             }
             
@@ -254,7 +258,7 @@ class RealityRenderer: NSObject {
                 dragPlane = simd_dot(camToEntity, planeNormal)
                 
                 // Initial offset
-                if let worldPos = arView.unproject(point, ontoPlane: cameraTransform.matrix, distance: dragPlane) {
+                if let worldPos = arView.unproject(adjustedPoint, ontoPlane: cameraTransform.matrix, distance: dragPlane) {
                     dragOffset = entityPos - worldPos
                 }
             }
@@ -263,9 +267,10 @@ class RealityRenderer: NSObject {
     
     func updateDragging(at point: CGPoint) {
         guard let arView = arView, let entity = draggedEntity else { return }
+        let adjustedPoint = CGPoint(x: point.x, y: arView.bounds.height - point.y)
         
         let cameraTransform = arView.cameraTransform
-        if let worldPos = arView.unproject(point, ontoPlane: cameraTransform.matrix, distance: dragPlane) {
+        if let worldPos = arView.unproject(adjustedPoint, ontoPlane: cameraTransform.matrix, distance: dragPlane) {
             entity.setPosition(worldPos + dragOffset, relativeTo: nil)
         }
     }
@@ -301,13 +306,14 @@ extension ARView {
     }
     
     var cameraTransform: Transform {
-        // For non-AR macOS views, the camera is usually at a fixed or controlled position
-        // In RealityKit macOS, there's always a camera entity.
-        if let camera = self.scene.findEntity(named: "camera") {
-            return camera.transform
-        }
-        // Fallback or find active camera
-        return Transform(matrix: self.cameraTransform.matrix) 
+        // Our camera is always on the cameraAnchor
+        return RealityRenderer.shared.cameraTransformProperty
+    }
+}
+
+extension RealityRenderer {
+    var cameraTransformProperty: Transform {
+        return cameraAnchor.transform
     }
 }
 
