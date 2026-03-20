@@ -1,7 +1,7 @@
-# RedCube: Metal + JavaScript Renderer
+# metalJS: Metal + JavaScript Renderer
 
 ## Project Overview
-RedCube is an interactive macOS application that combines the high-performance 3D rendering capabilities of Apple's **Metal** framework with the lightweight scripting power of the **QuickJS** engine. It allows users to write JavaScript code in a built-in text editor to programmatically generate and control 3D scenes (specifically, rotating colored cubes) in real time.
+metalJS is an interactive macOS application that combines the high-performance 3D rendering capabilities of Apple's **Metal** framework with the lightweight scripting power of the **QuickJS** engine. It allows users to write JavaScript code in a built-in text editor to programmatically generate and control 3D scenes (specifically, rotating colored cubes) in real time.
 
 ## Goal
 The primary goal of this project is to demonstrate how to bridge a fast, compiled graphics API (Metal) with a dynamic scripting language (JavaScript). This provides a flexible playground where developers or artists can instantly see the results of their code without needing to recompile the entire Swift application, creating an ideal environment for rapid prototyping, creative coding, and educational purposes.
@@ -44,7 +44,7 @@ for (let x = -2; x <= 2; x++) {
 - **Load & Save Scripts:** Native macOS dialogs allow you to open `.js` files from your computer and save your editor's code directly to the filesystem.
 
 ## Running the App
-A pre-compiled version of the application (`RedCube.app`) is included directly within the repository. You can simply clone this repository and double-click `RedCube.app` in Finder to launch the application immediately.
+A pre-compiled version of the application (`metalJS.app`) is included directly within the repository. You can simply clone this repository and double-click `metalJS.app` in Finder to launch the application immediately.
 
 ## Building from Source
 This application was created without Xcode using the **Antigravity AI Assistant**. The entire application is built using terminal tools via Apple's Command Line Tools and the open-source QuickJS engine.
@@ -59,4 +59,4 @@ The project includes a `build.sh` script to automate compilation. Run the follow
 ```bash
 ./build.sh
 ```
-This script will compile the Metal shaders (`xcrun metal`), the QuickJS C bridge (`cc`), the Swift application (`swiftc`), and bundle everything into `RedCube.app`.
+This script will compile the Metal shaders (`xcrun metal`), the QuickJS C bridge (`cc`), the Swift application (`swiftc`), and bundle everything into `metalJS.app`.
