@@ -21,6 +21,31 @@ let satellite = spawn('box', 'Satellite')
     .setColor(1, 1, 0, 1, 0.8, 0.2) // Gold satellite
     .attachTo(moon); // <-- NEW API: Attach satellite to moon
 
+
+
+// 2. Gestion des événements (Zoom et Rotation)
+// Le système appelle automatiquement _onEvent(type, x, y)
+globalThis._onEvent = function(type, x, y) {
+    if (type === 'drag') {
+        camRotY -= x * 0.01;
+        camRotX += y * 0.01;
+        // Limiter la rotation X pour ne pas passer sous le sol
+        if (camRotX < 0.1) camRotX = 0.1;
+        if (camRotX > 1.4) camRotX = 1.4;
+    } else if (type === 'zoom') {
+        camDist -= x * 10;
+        if (camDist < 5) camDist = 5;
+        if (camDist > 50) camDist = 50;
+    } else if (type === 'scroll') {
+        // Optionnel : utiliser le scroll vertical pour le zoom alternatif
+        camDist -= y * 0.1;
+        if (camDist < 5) camDist = 5;
+        if (camDist > 50) camDist = 50;
+    }
+    updateCamera();
+};
+
+
 // Animation logic
 let angle = 0;
 function update() {
