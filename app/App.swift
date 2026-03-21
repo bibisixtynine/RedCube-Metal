@@ -687,7 +687,7 @@ struct CLIView: View {
     @State private var suggestions: [String] = []
     @State private var currentHelp: FunctionDoc? = nil
     
-    let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log"]
+    let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log", "lock", "unlock"]
     
     struct FunctionDoc {
         let signature: String
@@ -777,6 +777,18 @@ struct CLIView: View {
             description: "Prints to the debug log.",
             parameters: [
                 .init(name: "msg", desc: "The message to display")
+            ]),
+        "lock": FunctionDoc(
+            signature: "lock(id)",
+            description: "Prevents an entity from being picked or dragged.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID")
+            ]),
+        "unlock": FunctionDoc(
+            signature: "unlock(id)",
+            description: "Allows an entity to be picked or dragged again.",
+            parameters: [
+                .init(name: "id", desc: "Entity ID")
             ])
     ]
 

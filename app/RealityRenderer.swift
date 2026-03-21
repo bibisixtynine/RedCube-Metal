@@ -25,6 +25,7 @@ class RealityRenderer: NSObject {
     private var dragPlane: Float = 0
     private var dragOffset: SIMD3<Float> = .zero
     private var entities: [String: Entity] = [:]
+    private var lockedEntities: Set<String> = []
     private let rootAnchor = AnchorEntity(world: .zero)
     private let camera = PerspectiveCamera()
     private let cameraAnchor = AnchorEntity(world: .zero)
@@ -41,7 +42,7 @@ class RealityRenderer: NSObject {
         arView?.environment.background = .color(.black)
         
         print("RealityRenderer: Initializing...")
-        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback)
+        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback)
         
         arView?.scene.publisher(for: SceneEvents.Update.self)
             .sink { [weak self] event in
@@ -89,7 +90,7 @@ class RealityRenderer: NSObject {
             entity.removeFromParent()
         }
         entities.removeAll()
-        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback)
+        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback)
     }
     
     func spawn(type: String, name: String) -> String {
@@ -188,6 +189,14 @@ class RealityRenderer: NSObject {
         entity.model?.materials = [material]
     }
     
+    func setLock(id: String, locked: Int) {
+        if locked != 0 {
+            lockedEntities.insert(id)
+        } else {
+            lockedEntities.remove(id)
+        }
+    }
+    
     func handleScroll(deltaX: Float, deltaY: Float) { 
         if draggedEntity != nil { return }
         qjs_send_event("scroll", Double(deltaX), Double(deltaY)) 
@@ -245,7 +254,12 @@ class RealityRenderer: NSObject {
             // Traverse up to find a draggable entity (e.g. one we spawned)
             var current: Entity? = entity
             while current != nil {
-                if entities.values.contains(where: { $0 === current }) {
+                // Find the ID of this entity
+                if let id = entities.first(where: { $0.value === current })?.key {
+                    if lockedEntities.contains(id) {
+                        return // Locked!
+                    }
+                    targetId = id
                     break
                 }
                 current = current?.parent
@@ -396,4 +410,9 @@ let qjsSetPhysicsCallback: SetPhysicsCallback = { id, mode in
 let qjsSetTextureCallback: SetTextureCallback = { id, name in
     guard let id = id, let name = name else { return }
     RealityRenderer.shared.setTexture(id: String(cString: id), name: String(cString: name))
+}
+
+let qjsSetLockCallback: SetLockCallback = { id, locked in
+    guard let id = id else { return }
+    RealityRenderer.shared.setLock(id: String(cString: id), locked: Int(locked))
 }

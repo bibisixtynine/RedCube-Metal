@@ -12,9 +12,10 @@ typedef void (*RemoveCallback)(const char* id);
 typedef void (*SetCameraCallback)(float px, float py, float pz, float tx, float ty, float tz);
 typedef void (*SetPhysicsCallback)(const char* id, const char* mode);
 typedef void (*SetTextureCallback)(const char* id, const char* name);
+typedef void (*SetLockCallback)(const char* id, int locked);
 
-void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture);
-void qjs_reset(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture);
+void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock);
+void qjs_reset(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock);
 void qjs_run_script(const char *filename);
 void qjs_run_code(const char *code);
 void qjs_send_event(const char *type, double x, double y);
