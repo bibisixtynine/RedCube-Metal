@@ -1,6 +1,8 @@
 // --- EXEMPLE WAVE ---
 // Une vague mathématique de cubes.
 
+cameraMode('cinematic')
+
 let cubes = [];
 let size = 10;
 
@@ -8,7 +10,8 @@ for (let x = -size; x <= size; x++) {
     for (let z = -size; z <= size; z++) {
         let cube = spawn('box')
             .setPosition(x, 0, z)
-            .setScale(0.8, 0.8, 0.8);
+            .setScale(0.8, 0.8, 0.8)
+			  .setPhysics('static');
         
         // Stocker les coordonnées initiales sur l'objet
         cube.ox = x;
@@ -20,7 +23,7 @@ for (let x = -size; x <= size; x++) {
 setCamera(15, 15, 15, 0, 0, 0);
 
 function loop(t) {
-    let time = t * 0.002;
+    let time = t * 5;
     cubes.forEach(c => {
         let dist = Math.sqrt(c.ox*c.ox + c.oz*c.oz);
         let y = Math.sin(dist * 0.5 - time) * 2;

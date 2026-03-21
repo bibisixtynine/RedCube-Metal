@@ -3,13 +3,17 @@
 
 setCamera(0, 10, 15, 0, 0, 0);
 
+cameraMode('cinematic')
+
+
 // 1. Création du sol
 let floor = spawn('box', 'Floor')
     .setScale(20, 0.1, 20)
     .setPosition(0, -5, 0)
-    .setColor(1, 1, 1, 1, 0, 1)
+    .setColor(1, 1, .4, .1, 0, .1)
     .setTexture('grid')
-    .setPhysics('static');
+    .setPhysics('static')
+	 .lock()
 
 let cubes = [];
 let frameCount = 0;

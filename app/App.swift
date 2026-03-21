@@ -33,7 +33,7 @@ class SyntaxHighlighter {
     
     private let builtins = Set([
         "console", "Math", "JSON", "Array", "Object", "String", "Number", "Boolean", "RegExp", "Date", "Error", "globalThis", "window", "document",
-        "spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "attachTo"
+        "spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "attachTo", "cameraMode"
     ])
 
     func highlight(_ textStorage: NSTextStorage) {
@@ -532,6 +532,12 @@ struct HelpView: View {
                             title: "_onEvent(type, x, y)",
                             description: "Hook global pour les interactions (drag, scroll, zoom).",
                             example: "globalThis._onEvent = function(type, x, y) {\n  if (type === 'drag') camRotY -= x * 0.01;\n};"
+                        )
+
+                        helpSection(
+                            title: "cameraMode(mode)",
+                            description: "Définit le mode de gestion de la caméra ('cinematic', 'navigate', 'free').",
+                            example: "cameraMode('cinematic');"
                         )
                     }
                 }

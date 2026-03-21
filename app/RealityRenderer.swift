@@ -18,6 +18,11 @@ class RealityARView: ARView {
     }
 }
 
+extension Float {
+    var degreesToRadians: Float { self * .pi / 180 }
+    var radiansToDegrees: Float { self * 180 / .pi }
+}
+
 extension simd_quatf {
     var eulerAngles: SIMD3<Float> {
         let simd_quat = self.vector
@@ -103,6 +108,17 @@ class RealityRenderer: NSObject {
     private var cancellables = Set<AnyCancellable>()
     private var lastInspectorUpdate: TimeInterval = 0
     
+    // Camera Modes
+    private var cameraMode: String = "free"
+    private var orbitTheta: Float = Float(45.0).degreesToRadians // Yaw
+    private var orbitPhi: Float = Float(30.0).degreesToRadians   // Pitch
+    private var orbitDistance: Float = 15.0
+    private var cameraTarget: SIMD3<Float> = .zero
+    
+    // Navigate Mode
+    private var lookYaw: Float = 0
+    private var lookPitch: Float = 0
+    
     var isPaused: Bool = false
     
     private override init() {
@@ -114,7 +130,7 @@ class RealityRenderer: NSObject {
         arView?.environment.background = .color(.black)
         
         print("RealityRenderer: Initializing...")
-        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback)
+        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback, qjsCameraModeCallback)
         
         arView?.scene.publisher(for: SceneEvents.Update.self)
             .sink { [weak self] event in
@@ -169,7 +185,8 @@ class RealityRenderer: NSObject {
             entity.removeFromParent()
         }
         entities.removeAll()
-        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback)
+        cameraMode = "free" // Reset camera mode
+        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback, qjsCameraModeCallback)
     }
     
     func spawn(type: String, name: String) -> String {
@@ -355,17 +372,79 @@ class RealityRenderer: NSObject {
         }
     }
     
+    func setCameraMode(mode: String) {
+        self.cameraMode = mode
+        if mode == "cinematic" {
+            // Initialize orbit from current position if possible
+            let pos = cameraAnchor.position
+            orbitDistance = simd_length(pos)
+            orbitTheta = atan2(pos.x, pos.z)
+            orbitPhi = atan2(pos.y, sqrt(pos.x*pos.x + pos.z*pos.z))
+        } else if mode == "navigate" {
+            lookYaw = 0
+            lookPitch = 0
+        }
+    }
+
     func handleScroll(deltaX: Float, deltaY: Float) { 
         if draggedEntity != nil { return }
-        qjs_send_event("scroll", Double(deltaX), Double(deltaY)) 
+        
+        if cameraMode == "cinematic" {
+            orbitDistance -= deltaY * 0.1
+            orbitDistance = max(1.0, min(100.0, orbitDistance))
+            updateCinematicCamera()
+        } else if cameraMode == "navigate" {
+            let forward = cameraAnchor.transform.matrix.columns.2.xyz
+            cameraAnchor.position -= forward * deltaY * 0.05
+        } else {
+            qjs_send_event("scroll", Double(deltaX), Double(deltaY)) 
+        }
     }
+    
     func handleDrag(dx: Float, dy: Float) { 
         if draggedEntity != nil { return }
-        qjs_send_event("drag", Double(dx), Double(dy)) 
+        
+        if cameraMode == "cinematic" {
+            orbitTheta -= dx * 0.01
+            orbitPhi += dy * 0.01
+            orbitPhi = max(-Float.pi/2 + 0.1, min(Float.pi/2 - 0.1, orbitPhi))
+            updateCinematicCamera()
+        } else if cameraMode == "navigate" {
+            // If Shift is pressed (how do we know? NSEvent.modifierFlags)
+            // For now, let's assume a simpler navigate: drag = rotate
+            lookYaw -= dx * 0.01
+            lookPitch -= dy * 0.01
+            lookPitch = max(-Float.pi/2 + 0.1, min(Float.pi/2 - 0.1, lookPitch))
+            
+            let qy = simd_quatf(angle: lookYaw, axis: [0, 1, 0])
+            let qx = simd_quatf(angle: lookPitch, axis: [1, 0, 0])
+            cameraAnchor.orientation = qy * qx
+        } else {
+            qjs_send_event("drag", Double(dx), Double(dy)) 
+        }
     }
+    
     func handleMagnify(delta: Float) { 
         if draggedEntity != nil { return }
-        qjs_send_event("zoom", Double(delta), 0) 
+        
+        if cameraMode == "cinematic" {
+            orbitDistance -= delta * 10
+            orbitDistance = max(1.0, min(100.0, orbitDistance))
+            updateCinematicCamera()
+        } else if cameraMode == "navigate" {
+            let forward = cameraAnchor.transform.matrix.columns.2.xyz
+            cameraAnchor.position -= forward * delta * 5
+        } else {
+            qjs_send_event("zoom", Double(delta), 0) 
+        }
+    }
+    
+    private func updateCinematicCamera() {
+        let x = orbitDistance * cos(orbitPhi) * sin(orbitTheta)
+        let y = orbitDistance * sin(orbitPhi)
+        let z = orbitDistance * cos(orbitPhi) * cos(orbitTheta)
+        
+        setCamera(px: x, py: y, pz: z, tx: cameraTarget.x, ty: cameraTarget.y, tz: cameraTarget.z)
     }
     
     private func update(time: Double) {
@@ -578,4 +657,9 @@ let qjsAttachToCallback: AttachToCallback = { childId, parentId in
     guard let childId = childId else { return }
     let pid = parentId != nil ? String(cString: parentId!) : nil
     RealityRenderer.shared.attachTo(id: String(cString: childId), parentId: pid)
+}
+
+let qjsCameraModeCallback: SetCameraModeCallback = { mode in
+    guard let mode = mode else { return }
+    RealityRenderer.shared.setCameraMode(mode: String(cString: mode))
 }
