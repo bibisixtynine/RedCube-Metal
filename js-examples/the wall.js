@@ -6,7 +6,7 @@ setCamera(0, 12, 20, 0, 0, 0);
 
 // 1. Floor
 let floor = spawn('box', 'Floor')
-    .setScale(25, 1, 25)
+    .setScale(50, 1, 59)
     .setPosition(0, 0, 0)
     .setColor(0.6, 0.4, 0, 1, 0, 0.1) 
     .setPhysics('static')
@@ -23,10 +23,13 @@ for (let x=-5; x<5; x++) {
   }
 }
 
+// 3. ball
 
+let ball = spawn('sphere','ball')
+	.setPosition(0,1.1,20)
 
     
-
+ball.setVelocity(0,10,10)
 
 
 

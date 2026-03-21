@@ -130,7 +130,7 @@ class RealityRenderer: NSObject {
         arView?.environment.background = .color(.black)
         
         print("RealityRenderer: Initializing...")
-        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback, qjsCameraModeCallback)
+        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback, qjsCameraModeCallback, qjsSetVelocityCallback)
         
         arView?.scene.publisher(for: SceneEvents.Update.self)
             .sink { [weak self] event in
@@ -186,7 +186,7 @@ class RealityRenderer: NSObject {
         }
         entities.removeAll()
         cameraMode = "free" // Reset camera mode
-        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback, qjsCameraModeCallback)
+        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback, qjsCameraModeCallback, qjsSetVelocityCallback)
     }
     
     func spawn(type: String, name: String) -> String {
@@ -370,6 +370,13 @@ class RealityRenderer: NSObject {
         } else {
             lockedEntities.remove(id)
         }
+    }
+    
+    func setVelocity(id: String, vx: Float, vy: Float, vz: Float) {
+        guard let entity = entities[id] else { return }
+        var motion = entity.components[PhysicsMotionComponent.self] ?? PhysicsMotionComponent()
+        motion.linearVelocity = [vx, vy, vz]
+        entity.components.set(motion)
     }
     
     func setCameraMode(mode: String) {
@@ -661,5 +668,12 @@ let qjsAttachToCallback: AttachToCallback = { childId, parentId in
 
 let qjsCameraModeCallback: SetCameraModeCallback = { mode in
     guard let mode = mode else { return }
-    RealityRenderer.shared.setCameraMode(mode: String(cString: mode))
+    let modeStr = String(cString: mode)
+    RealityRenderer.shared.setCameraMode(mode: modeStr)
+}
+
+let qjsSetVelocityCallback: SetVelocityCallback = { id, vx, vy, vz in
+    guard let id = id else { return }
+    let idStr = String(cString: id)
+    RealityRenderer.shared.setVelocity(id: idStr, vx: vx, vy: vy, vz: vz)
 }

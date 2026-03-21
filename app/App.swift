@@ -4,6 +4,18 @@ import AppKit
 import RealityKit
 
 
+struct ParamDoc: Identifiable, Equatable {
+    let id = UUID()
+    let name: String
+    let desc: String
+}
+
+struct FunctionDoc: Equatable {
+    let signature: String
+    let description: String
+    let parameters: [ParamDoc]
+}
+
 @main
 struct MetalApp: App {
     static var scriptPath: String?
@@ -33,7 +45,7 @@ class SyntaxHighlighter {
     
     private let builtins = Set([
         "console", "Math", "JSON", "Array", "Object", "String", "Number", "Boolean", "RegExp", "Date", "Error", "globalThis", "window", "document",
-        "spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "attachTo", "cameraMode"
+        "spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "attachTo", "cameraMode", "setVelocity"
     ])
 
     func highlight(_ textStorage: NSTextStorage) {
@@ -44,7 +56,7 @@ class SyntaxHighlighter {
         textStorage.beginEditing()
         // Reset colors and font to ensure consistency
         textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: range)
-        textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular), range: range)
+        textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 15, weight: .regular), range: range)
         
         // Comments
         let commentRegex = try? NSRegularExpression(pattern: "//.*|/\\*[\\s\\S]*?\\*/", options: [])
@@ -92,7 +104,173 @@ class CodeStore: ObservableObject {
     static let shared = CodeStore()
     @Published var jsCode: String = ""
     @Published var isLineWrapping: Bool = true
+    @Published var suggestions: [String] = []
+    @Published var currentHelp: FunctionDoc? = nil
+    @Published var cursorScreenRect: NSRect = .zero
+    @Published var showSuggestions: Bool = false
+    
     weak var textView: NSTextView?
+    
+    let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log", "lock", "unlock", "setVelocity", "attachTo", "cameraMode"]
+    
+    let jsFunctionHelp: [String: FunctionDoc] = [
+        "spawn": FunctionDoc(
+            signature: "spawn(type, name)",
+            description: "Spawns a new 3D entity and returns an interactive object.",
+            parameters: [
+                .init(name: "type", desc: "'box', 'sphere', 'cone', etc."),
+                .init(name: "name", desc: "Optional debug name")
+            ]),
+        "setPosition": FunctionDoc(
+            signature: "entity.setPosition(x, y, z)",
+            description: "Sets the entity's position in world space.",
+            parameters: [
+                .init(name: "x, y, z", desc: "Position coordinates")
+            ]),
+        "setRotation": FunctionDoc(
+            signature: "entity.setRotation(x, y, z)",
+            description: "Sets the entity's rotation (Euler angles in radians).",
+            parameters: [
+                .init(name: "x, y, z", desc: "Rotation angles")
+            ]),
+        "setScale": FunctionDoc(
+            signature: "entity.setScale(x, y, z)",
+            description: "Sets the entity's scale multiplier.",
+            parameters: [
+                .init(name: "x, y, z", desc: "Scale factors")
+            ]),
+        "setColor": FunctionDoc(
+            signature: "entity.setColor(r, g, b, a, metallic, roughness)",
+            description: "Sets the material color and properties.",
+            parameters: [
+                .init(name: "r, g, b, a", desc: "RGBA values (0.0 to 1.0)"),
+                .init(name: "metallic", desc: "Metallic factor (0.0 to 1.0)"),
+                .init(name: "roughness", desc: "Roughness factor (0.0 to 1.0)")
+            ]),
+        "remove": FunctionDoc(
+            signature: "entity.remove()",
+            description: "Removes the entity from the scene.",
+            parameters: []),
+        "setCamera": FunctionDoc(
+            signature: "setCamera(x, y, z, tx, ty, tz)",
+            description: "Positions the camera and its look-at target.",
+            parameters: [
+                .init(name: "x, y, z", desc: "Camera position"),
+                .init(name: "tx, ty, tz", desc: "Target point")
+            ]),
+        "setPhysics": FunctionDoc(
+            signature: "entity.setPhysics(mode)",
+            description: "Changes the physics mode of the entity.",
+            parameters: [
+                .init(name: "mode", desc: "'static', 'dynamic', or 'kinematic'")
+            ]),
+        "setTexture": FunctionDoc(
+            signature: "entity.setTexture(name)",
+            description: "Applies a texture from the bundle (e.g. 'grid').",
+            parameters: [
+                .init(name: "name", desc: "Texture filename")
+            ]),
+        "requestAnimationFrame": FunctionDoc(
+            signature: "requestAnimationFrame(callback)",
+            description: "Schedules a function for the next frame update.",
+            parameters: [
+                .init(name: "callback", desc: "Function to execute")
+            ]),
+        "console.log": FunctionDoc(
+            signature: "console.log(msg)",
+            description: "Prints a message to the debug log.",
+            parameters: [
+                .init(name: "msg", desc: "Message text")
+            ]),
+        "lock": FunctionDoc(
+            signature: "entity.lock()",
+            description: "Prevents the entity from being picked or dragged.",
+            parameters: []),
+        "unlock": FunctionDoc(
+            signature: "entity.unlock()",
+            description: "Allows the entity to be picked and dragged again.",
+            parameters: []),
+        "attachTo": FunctionDoc(
+            signature: "entity.attachTo(parent)",
+            description: "Attaches this entity to a parent entity (or scene if null).",
+            parameters: [
+                .init(name: "parent", desc: "Parent entity object or ID (null to detach)")
+            ]),
+        "setVelocity": FunctionDoc(
+            signature: "entity.setVelocity(vx, vy, vz)",
+            description: "Sets the linear velocity of a dynamic physics entity.",
+            parameters: [
+                .init(name: "vx, vy, vz", desc: "Velocity vector components")
+            ]),
+        "cameraMode": FunctionDoc(
+            signature: "cameraMode(mode)",
+            description: "Sets the camera management mode.",
+            parameters: [
+                .init(name: "mode", desc: "'cinematic', 'navigate', or 'free'")
+            ])
+    ]
+
+    func updateAutocomplete(for text: String, cursorLocation: Int) {
+        let nsText = text as NSString
+        if cursorLocation > nsText.length { return }
+        let beforeCursor = nsText.substring(to: cursorLocation)
+        
+        // Extract only the current line (text after last newline)
+        let currentLine: String
+        if let lastNewline = beforeCursor.range(of: "\n", options: .backwards) {
+            currentLine = String(beforeCursor[lastNewline.upperBound...])
+        } else {
+            currentLine = beforeCursor
+        }
+        
+        // Handle help for function calls - check if we're inside parens on THIS line
+        if let parenRange = currentLine.range(of: "(", options: .backwards) {
+            let beforeParen = currentLine[..<parenRange.lowerBound]
+            let parts = String(beforeParen).components(separatedBy: CharacterSet(charactersIn: " (.;\t"))
+            if let lastWord = parts.last?.trimmingCharacters(in: CharacterSet.whitespaces),
+               jsFunctions.contains(lastWord) {
+                suggestions = []
+                currentHelp = jsFunctionHelp[lastWord]
+                showSuggestions = true
+                return
+            }
+        }
+        
+        // Extract the word being typed (after last separator)
+        let parts = currentLine.components(separatedBy: CharacterSet(charactersIn: " (.;\t"))
+        guard let lastPart = parts.last, !lastPart.isEmpty else {
+            suggestions = []
+            currentHelp = nil
+            showSuggestions = false
+            return
+        }
+        
+        let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
+        if !matches.isEmpty {
+            suggestions = matches
+            currentHelp = nil
+            showSuggestions = true
+        } else {
+            suggestions = []
+            currentHelp = nil
+            showSuggestions = false
+        }
+    }
+    
+    func applySuggestion(_ suggestion: String) {
+        guard let textView = textView else { return }
+        let cursorLocation = textView.selectedRange().location
+        let nsText = textView.string as NSString
+        let beforeCursor = nsText.substring(to: cursorLocation)
+        let parts = beforeCursor.components(separatedBy: CharacterSet(charactersIn: " (.;\n"))
+        guard let lastPart = parts.last else { return }
+        
+        let range = NSRange(location: cursorLocation - lastPart.count, length: lastPart.count)
+        textView.insertText(suggestion + "(", replacementRange: range)
+        
+        suggestions = []
+        currentHelp = jsFunctionHelp[suggestion]
+    }
     
     func insertCode(_ text: String) {
         if let textView = textView {
@@ -223,7 +401,18 @@ struct ContentView: View {
                 CodeEditor(text: $codeStore.jsCode, isLineWrapping: codeStore.isLineWrapping)
                     .frame(width: 400)
                     .cornerRadius(8)
-                    .padding()
+                    .padding(.horizontal)
+                    .padding(.top)
+                    .layoutPriority(1)
+                
+                if codeStore.showSuggestions {
+                    Divider()
+                        .padding(.top, 4)
+                    SuggestionOverlay()
+                        .padding(.horizontal)
+                        .padding(.bottom, 4)
+                        .background(Color.black.opacity(0.02))
+                }
                 
                 HStack {
                     Spacer()
@@ -319,7 +508,7 @@ struct ContentView: View {
         }
         server.onGetHelp = {
             // Basic help for now, could be more elaborate
-            return "Available functions: spawn, setPosition, setRotation, setScale, setColor, remove, setCamera, setPhysics, setTexture, requestAnimationFrame"
+            return "Available functions: spawn, setPosition, setRotation, setScale, setColor, remove, setCamera, setPhysics, setTexture, requestAnimationFrame, setVelocity"
         }
         server.onCallFunction = { call in
             qjs_run_code(call)
@@ -395,7 +584,7 @@ struct CodeEditor: NSViewRepresentable {
         textView.isRichText = true // Required for multiple colors
         textView.allowsUndo = true
         textView.autoresizingMask = [.width]
-        textView.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.font = .monospacedSystemFont(ofSize: 15, weight: .regular)
         textView.delegate = context.coordinator
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
@@ -418,10 +607,17 @@ struct CodeEditor: NSViewRepresentable {
     func updateNSView(_ nsView: NSScrollView, context: Context) {
         if let textView = nsView.documentView as? NSTextView {
             if textView.string != text {
+                context.coordinator.isUpdating = true
+                let cursorPos = textView.selectedRange()
                 textView.string = text
+                // Restore cursor position after programmatic update
+                if cursorPos.location <= (text as NSString).length {
+                    textView.setSelectedRange(cursorPos)
+                }
                 if let textStorage = textView.textStorage {
                     SyntaxHighlighter.shared.highlight(textStorage)
                 }
+                context.coordinator.isUpdating = false
             }
             
             // Update line wrapping
@@ -443,19 +639,155 @@ struct CodeEditor: NSViewRepresentable {
     
     class Coordinator: NSObject, NSTextViewDelegate {
         var parent: CodeEditor
+        var isUpdating = false
         
         init(_ parent: CodeEditor) {
             self.parent = parent
         }
         
         func textDidChange(_ notification: Notification) {
+            guard !isUpdating else { return }
             if let textView = notification.object as? NSTextView {
                 self.parent.text = textView.string
                 if let textStorage = textView.textStorage {
                     SyntaxHighlighter.shared.highlight(textStorage)
                 }
+                triggerAutocomplete(textView)
             }
         }
+        
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard !isUpdating else { return }
+            if let textView = notification.object as? NSTextView {
+                triggerAutocomplete(textView)
+            }
+        }
+        
+        private func triggerAutocomplete(_ textView: NSTextView) {
+            let text = textView.string
+            let location = textView.selectedRange().location
+            let rect = getCursorRect(textView)
+            
+            CodeStore.shared.cursorScreenRect = rect
+            CodeStore.shared.updateAutocomplete(for: text, cursorLocation: location)
+        }
+        
+        private func getCursorRect(_ textView: NSTextView) -> NSRect {
+            if let layoutManager = textView.layoutManager, let textContainer = textView.textContainer {
+                let selectedRange = textView.selectedRange()
+                let glyphRange = layoutManager.glyphRange(forCharacterRange: selectedRange, actualCharacterRange: nil)
+                let rect = layoutManager.boundingRect(forGlyphRange: glyphRange, in: textContainer)
+                let containerOrigin = textView.textContainerOrigin
+                return rect.offsetBy(dx: containerOrigin.x, dy: containerOrigin.y)
+            }
+            return .zero
+        }
+        
+        func textView(_ textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            if CodeStore.shared.showSuggestions {
+                if commandSelector == #selector(NSResponder.insertTab(_:)) || commandSelector == #selector(NSResponder.insertNewline(_:)) {
+                    if let first = CodeStore.shared.suggestions.first {
+                        CodeStore.shared.applySuggestion(first)
+                        return true
+                    }
+                }
+                if commandSelector == #selector(NSResponder.cancelOperation(_:)) {
+                    CodeStore.shared.showSuggestions = false
+                    return true
+                }
+            }
+            return false
+        }
+    }
+}
+
+struct JSFunctionHelpView: View {
+    let doc: FunctionDoc
+    var onDismiss: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text(doc.signature)
+                    .font(.system(size: 15, design: .monospaced))
+                    .bold()
+                    .foregroundColor(.primary)
+                Spacer()
+                Button(action: onDismiss) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+            
+            Text(doc.description)
+                .font(.system(size: 14))
+                .foregroundColor(.secondary)
+                .padding(.bottom, 2)
+            
+            if !doc.parameters.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    ForEach(doc.parameters) { param in
+                        HStack(alignment: .top) {
+                            Text("• \(param.name):")
+                                .font(.system(size: 13, design: .monospaced))
+                                .bold()
+                                .frame(width: 100, alignment: .leading)
+                            Text(param.desc)
+                                .font(.system(size: 13))
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(10)
+        .background(Color(NSColor.windowBackgroundColor))
+    }
+}
+
+struct JSSuggestionsView: View {
+    let suggestions: [String]
+    let onSelect: (String) -> Void
+    
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                ForEach(suggestions, id: \.self) { suggestion in
+                    Text(suggestion)
+                        .font(.system(size: 13, design: .monospaced))
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(suggestion == suggestions.first ? Color.blue : Color.blue.opacity(0.1))
+                        .foregroundColor(suggestion == suggestions.first ? .white : .primary)
+                        .cornerRadius(4)
+                        .onTapGesture {
+                            onSelect(suggestion)
+                        }
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+struct SuggestionOverlay: View {
+    @ObservedObject var codeStore = CodeStore.shared
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            if let doc = codeStore.currentHelp {
+                JSFunctionHelpView(doc: doc) {
+                    codeStore.currentHelp = nil
+                }
+            } else if !codeStore.suggestions.isEmpty {
+                JSSuggestionsView(suggestions: codeStore.suggestions) { suggestion in
+                    codeStore.applySuggestion(suggestion)
+                }
+            }
+        }
+        .frame(minHeight: codeStore.showSuggestions ? 30 : 0)
+        .transition(.opacity)
     }
 }
 
@@ -538,6 +870,12 @@ struct HelpView: View {
                             title: "cameraMode(mode)",
                             description: "Définit le mode de gestion de la caméra ('cinematic', 'navigate', 'free').",
                             example: "cameraMode('cinematic');"
+                        )
+                        
+                        helpSection(
+                            title: "setVelocity(id, vx, vy, vz)",
+                            description: "Définit la vélocité linéaire d'un objet dynamique.",
+                            example: "let id = spawn('box');\nsetPhysics(id, 'dynamic');\nsetVelocity(id, 0, 5, 0);"
                         )
                     }
                 }
@@ -635,7 +973,7 @@ struct CLITextField: NSViewRepresentable {
         textField.isBezeled = false
         textField.drawsBackground = false
         textField.focusRingType = .none
-        textField.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
+        textField.font = .monospacedSystemFont(ofSize: 15, weight: .regular)
         textField.placeholderString = "Commande JS..."
         return textField
     }
@@ -699,7 +1037,7 @@ struct CLIView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         ForEach(log) { line in
                             Text(line.isResponse ? "← \(line.text)" : "→ \(line.text)")
-                                .font(.system(.body, design: .monospaced))
+                                .font(.system(size: 14, design: .monospaced))
                                 .foregroundColor(line.isResponse ? .blue : .primary)
                                 .textSelection(.enabled)
                         }
@@ -717,65 +1055,18 @@ struct CLIView: View {
             }
             .background(Color.black.opacity(0.05))
             
-            if let doc = currentHelp {
+            if let doc = codeStore.currentHelp {
                 Divider()
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text(doc.signature)
-                            .font(.system(.body, design: .monospaced))
-                            .bold()
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Button(action: { currentHelp = nil }) {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    
-                    Text(doc.description)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .padding(.bottom, 2)
-                    
-                    if !doc.parameters.isEmpty {
-                        VStack(alignment: .leading, spacing: 2) {
-                            ForEach(doc.parameters) { param in
-                                HStack(alignment: .top) {
-                                    Text("• \(param.name):")
-                                        .font(.system(.caption, design: .monospaced))
-                                        .bold()
-                                        .frame(width: 100, alignment: .leading)
-                                    Text(param.desc)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                    }
+                JSFunctionHelpView(doc: doc) {
+                    codeStore.currentHelp = nil
                 }
-                .padding(10)
-                .background(Color(NSColor.windowBackgroundColor))
                 .transition(.opacity)
-            } else if !suggestions.isEmpty {
+            } else if !codeStore.suggestions.isEmpty {
                 Divider()
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(suggestions, id: \.self) { suggestion in
-                            Text(suggestion)
-                                .font(.system(.caption, design: .monospaced))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(4)
-                                .onTapGesture {
-                                    applySuggestion(suggestion)
-                                }
-                        }
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 4)
+                JSSuggestionsView(suggestions: codeStore.suggestions) { suggestion in
+                    applySuggestion(suggestion)
                 }
+                .padding(.horizontal)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
             
@@ -801,161 +1092,32 @@ struct CLIView: View {
         .frame(minWidth: 500, minHeight: 300)
     }
     
+    @ObservedObject var codeStore = CodeStore.shared
     @State private var history: [String] = []
     @State private var historyIndex: Int = -1
     @State private var tempInput: String = ""
-    @State private var suggestions: [String] = []
-    @State private var currentHelp: FunctionDoc? = nil
     
-    let jsFunctions = ["spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "console.log", "lock", "unlock"]
-    
-    struct FunctionDoc {
-        let signature: String
-        let description: String
-        let parameters: [ParamDoc]
-        
-        struct ParamDoc: Identifiable {
-            let id = UUID()
-            let name: String
-            let desc: String
-        }
-    }
-    
-    let jsFunctionHelp: [String: FunctionDoc] = [
-        "spawn": FunctionDoc(
-            signature: "spawn(type, name)",
-            description: "Spawns a new 3D entity and returns an interactive object.",
-            parameters: [
-                .init(name: "type", desc: "'box', 'sphere', 'cone', etc."),
-                .init(name: "name", desc: "Optional debug name")
-            ]),
-        "setPosition": FunctionDoc(
-            signature: "entity.setPosition(x, y, z)",
-            description: "Sets the entity's position in world space.",
-            parameters: [
-                .init(name: "x, y, z", desc: "Position coordinates")
-            ]),
-        "setRotation": FunctionDoc(
-            signature: "entity.setRotation(x, y, z)",
-            description: "Sets the entity's rotation (Euler angles in radians).",
-            parameters: [
-                .init(name: "x, y, z", desc: "Rotation angles")
-            ]),
-        "setScale": FunctionDoc(
-            signature: "entity.setScale(x, y, z)",
-            description: "Sets the entity's scale multiplier.",
-            parameters: [
-                .init(name: "x, y, z", desc: "Scale factors")
-            ]),
-        "setColor": FunctionDoc(
-            signature: "entity.setColor(r, g, b, a, metallic, roughness)",
-            description: "Sets the material color and properties.",
-            parameters: [
-                .init(name: "r, g, b, a", desc: "RGBA values (0.0 to 1.0)"),
-                .init(name: "metallic", desc: "Metallic factor (0.0 to 1.0)"),
-                .init(name: "roughness", desc: "Roughness factor (0.0 to 1.0)")
-            ]),
-        "remove": FunctionDoc(
-            signature: "entity.remove()",
-            description: "Removes the entity from the scene.",
-            parameters: []),
-        "setCamera": FunctionDoc(
-            signature: "setCamera(x, y, z, tx, ty, tz)",
-            description: "Positions the camera and its look-at target.",
-            parameters: [
-                .init(name: "x, y, z", desc: "Camera position"),
-                .init(name: "tx, ty, tz", desc: "Target point")
-            ]),
-        "setPhysics": FunctionDoc(
-            signature: "entity.setPhysics(mode)",
-            description: "Changes the physics mode of the entity.",
-            parameters: [
-                .init(name: "mode", desc: "'static', 'dynamic', or 'kinematic'")
-            ]),
-        "setTexture": FunctionDoc(
-            signature: "entity.setTexture(name)",
-            description: "Applies a texture from the bundle (e.g. 'grid').",
-            parameters: [
-                .init(name: "name", desc: "Texture filename")
-            ]),
-        "requestAnimationFrame": FunctionDoc(
-            signature: "requestAnimationFrame(callback)",
-            description: "Schedules a function for the next frame update.",
-            parameters: [
-                .init(name: "callback", desc: "Function to execute")
-            ]),
-        "console.log": FunctionDoc(
-            signature: "console.log(msg)",
-            description: "Prints a message to the debug log.",
-            parameters: [
-                .init(name: "msg", desc: "Message text")
-            ]),
-        "lock": FunctionDoc(
-            signature: "entity.lock()",
-            description: "Prevents the entity from being picked or dragged.",
-            parameters: []),
-        "unlock": FunctionDoc(
-            signature: "entity.unlock()",
-            description: "Allows the entity to be picked and dragged again.",
-            parameters: []),
-        "attachTo": FunctionDoc(
-            signature: "entity.attachTo(parent)",
-            description: "Attaches this entity to a parent entity (or scene if null).",
-            parameters: [
-                .init(name: "parent", desc: "Parent entity object or ID (null to detach)")
-            ])
-    ]
-
     func updateSuggestions(for text: String) {
-        // Handle help for function calls (text containing parenthesis)
-        if let parenRange = text.range(of: "(", options: .backwards) {
-            let beforeParen = text[..<parenRange.lowerBound]
-            let parts = beforeParen.components(separatedBy: CharacterSet(charactersIn: " (.;"))
-            if let lastWord = parts.last?.trimmingCharacters(in: .whitespaces), 
-               jsFunctions.contains(lastWord) {
-                suggestions = []
-                currentHelp = jsFunctionHelp[lastWord]
-                return
-            }
-        }
-        
-        let parts = text.components(separatedBy: CharacterSet(charactersIn: " (.;"))
-        guard let lastPart = parts.last, !lastPart.isEmpty else {
-            suggestions = []
-            currentHelp = nil
-            return
-        }
-        
-        let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
-        if matches.count > 1 || (matches.count == 1 && matches[0] != lastPart) {
-            suggestions = matches
-            currentHelp = nil
-        } else if matches.count == 1 && matches[0] == lastPart {
-            suggestions = []
-            currentHelp = jsFunctionHelp[matches[0]]
-        } else {
-            suggestions = []
-            currentHelp = nil
-        }
+        codeStore.updateAutocomplete(for: text, cursorLocation: text.count)
     }
     
     func applySuggestion(_ suggestion: String) {
-        let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+        let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;\n"))
         guard let lastPart = parts.last else { return }
         let prefix = String(input.dropLast(lastPart.count))
         input = prefix + suggestion + "("
-        suggestions = []
-        currentHelp = jsFunctionHelp[suggestion]
+        codeStore.suggestions = []
+        codeStore.currentHelp = codeStore.jsFunctionHelp[suggestion]
     }
 
     func handleAutocomplete() {
-        if let first = suggestions.first {
+        if let first = codeStore.suggestions.first {
             applySuggestion(first)
         } else {
             // Fallback to the old logic if suggestions are empty but maybe we can still find something
-            let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;"))
+            let parts = input.components(separatedBy: CharacterSet(charactersIn: " (.;\n"))
             guard let lastPart = parts.last, !lastPart.isEmpty else { return }
-            let matches = jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
+            let matches = codeStore.jsFunctions.filter { $0.lowercased().hasPrefix(lastPart.lowercased()) }
             if let firstMatch = matches.first {
                 applySuggestion(firstMatch)
             }
@@ -989,7 +1151,9 @@ struct CLIView: View {
             history.append(command)
         }
         historyIndex = -1
-        currentHelp = nil
+        codeStore.currentHelp = nil
+        codeStore.suggestions = []
+        codeStore.showSuggestions = false
         
         log.append(CLILine(text: command, isResponse: false))
         input = ""

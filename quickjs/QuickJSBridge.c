@@ -17,6 +17,7 @@ static SetTextureCallback texture_cb;
 static SetLockCallback lock_cb;
 static AttachToCallback attach_cb;
 static SetCameraModeCallback camera_mode_cb;
+static SetVelocityCallback velocity_cb;
 static JSValue animation_callback = JS_UNDEFINED;
 
 static JSValue js_console_log(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
@@ -160,6 +161,18 @@ static JSValue js_cameraMode(JSContext *ctx, JSValueConst this_val, int argc, JS
     return JS_UNDEFINED;
 }
 
+static JSValue js_setVelocity(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
+    if (argc < 4) return JS_EXCEPTION;
+    const char *id = JS_ToCString(ctx, argv[0]);
+    double vx, vy, vz;
+    JS_ToFloat64(ctx, &vx, argv[1]);
+    JS_ToFloat64(ctx, &vy, argv[2]);
+    JS_ToFloat64(ctx, &vz, argv[3]);
+    velocity_cb(id, (float)vx, (float)vy, (float)vz);
+    JS_FreeCString(ctx, id);
+    return JS_UNDEFINED;
+}
+
 static JSValue js_lock(JSContext *ctx, JSValueConst this_val, int argc, JSValueConst *argv) {
     if (argc < 1) return JS_EXCEPTION;
     const char *id = JS_ToCString(ctx, argv[0]);
@@ -176,7 +189,7 @@ static JSValue js_unlock(JSContext *ctx, JSValueConst this_val, int argc, JSValu
     return JS_UNDEFINED;
 }
 
-void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock, AttachToCallback attach, SetCameraModeCallback camera_mode) {
+void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock, AttachToCallback attach, SetCameraModeCallback camera_mode, SetVelocityCallback velocity) {
     if (rt) return;
     rt = JS_NewRuntime();
     ctx = JS_NewContext(rt);
@@ -192,6 +205,7 @@ void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback 
     lock_cb = lock;
     attach_cb = attach;
     camera_mode_cb = camera_mode;
+    velocity_cb = velocity;
     animation_callback = JS_UNDEFINED;
     js_std_add_helpers(ctx, 0, NULL);
     JSValue global_obj = JS_GetGlobalObject(ctx);
@@ -208,6 +222,7 @@ void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback 
     JS_SetPropertyStr(ctx, global_obj, "unlock", JS_NewCFunction(ctx, js_unlock, "unlock", 1));
     JS_SetPropertyStr(ctx, global_obj, "attachTo", JS_NewCFunction(ctx, js_attachTo, "attachTo", 2));
     JS_SetPropertyStr(ctx, global_obj, "cameraMode", JS_NewCFunction(ctx, js_cameraMode, "cameraMode", 1));
+    JS_SetPropertyStr(ctx, global_obj, "setVelocity", JS_NewCFunction(ctx, js_setVelocity, "setVelocity", 4));
     JS_SetPropertyStr(ctx, global_obj, "requestAnimationFrame", JS_NewCFunction(ctx, js_requestAnimationFrame, "requestAnimationFrame", 1));
     JSValue console = JS_NewObject(ctx);
     JS_SetPropertyStr(ctx, console, "log", JS_NewCFunction(ctx, js_console_log, "log", 1));
@@ -232,16 +247,17 @@ void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback 
         "      remove: function() { remove(this.id); },"
         "      lock: function() { lock(this.id); },"
         "      unlock: function() { unlock(this.id); },"
-        "      attachTo: function(parent) { attachTo(this.id, parent?.id || parent); return this; }"
+        "      attachTo: function(parent) { attachTo(this.id, parent?.id || parent); return this; },"
+        "      setVelocity: function(vx, vy, vz) { setVelocity(this.id, vx, vy, vz); return this; }"
         "    };"
         "  };"
         "})();";
     qjs_run_code(oo_prelude);
 }
 
-void qjs_reset(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock, AttachToCallback attach, SetCameraModeCallback camera_mode) {
+void qjs_reset(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock, AttachToCallback attach, SetCameraModeCallback camera_mode, SetVelocityCallback velocity) {
     qjs_cleanup();
-    qjs_init(spawn, pos, rot, scale, color, remove, camera, physics, texture, lock, attach, camera_mode);
+    qjs_init(spawn, pos, rot, scale, color, remove, camera, physics, texture, lock, attach, camera_mode, velocity);
 }
 
 void qjs_run_script(const char *filename) {
