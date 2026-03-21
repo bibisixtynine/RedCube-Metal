@@ -346,16 +346,34 @@ struct GlassButton<Content: View>: View {
     var body: some View {
         Button(action: action) {
             content
-                .frame(width: 18, height: 18)
-                .padding(8)
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 20, height: 20)
+                .padding(10)
                 .background(
-                    VisualEffectView(material: .selection, blendingMode: .withinWindow)
+                    Circle()
+                        .fill(Color.black.opacity(0.35))
+                )
+                .background(
+                    VisualEffectView(material: .popover, blendingMode: .withinWindow)
                         .clipShape(Circle())
+                        .opacity(0.5)
                 )
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                        .stroke(
+                            LinearGradient(
+                                colors: [
+                                    Color.white.opacity(0.35),
+                                    Color.cyan.opacity(0.2),
+                                    Color.white.opacity(0.1)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            ),
+                            lineWidth: 1.5
+                        )
                 )
+                .shadow(color: Color.cyan.opacity(0.08), radius: 6, x: 0, y: 0)
         }
         .buttonStyle(.plain)
     }
