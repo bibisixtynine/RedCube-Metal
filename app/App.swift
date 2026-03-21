@@ -351,12 +351,12 @@ struct GlassButton<Content: View>: View {
                 .padding(10)
                 .background(
                     Circle()
-                        .fill(Color.black.opacity(0.35))
+                        .fill(Color.black.opacity(0.15))
                 )
                 .background(
                     VisualEffectView(material: .popover, blendingMode: .withinWindow)
                         .clipShape(Circle())
-                        .opacity(0.5)
+                        .opacity(0.3)
                 )
                 .overlay(
                     Circle()
@@ -470,84 +470,78 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
-                HStack(spacing: 12) {
-                    GlassButton(action: { loadFile() }) {
-                        Image(systemName: "folder")
-                    }
-                    .help("Charger un fichier JS")
-                    
-                    GlassButton(action: { saveFile() }) {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                    .help("Sauvegarder le fichier JS")
+                GlassButton(action: { loadFile() }) {
+                    Image(systemName: "folder")
                 }
+                .help("Charger un fichier JS")
+                
+                GlassButton(action: { saveFile() }) {
+                    Image(systemName: "square.and.arrow.down")
+                }
+                .help("Sauvegarder le fichier JS")
             }
             
             ToolbarItemGroup(placement: .principal) {
-                HStack(spacing: 12) {
-                    GlassButton(action: { runCode() }) {
-                        Image(systemName: "play.fill")
-                            .foregroundColor(.green)
-                    }
-                    .keyboardShortcut("r", modifiers: .command)
-                    .help("Exécuter le code JS (Cmd+R)")
-                    
-                    GlassButton(action: {
-                        isPaused.toggle()
-                        RealityRenderer.shared.isPaused = isPaused
-                    }) {
-                        Image(systemName: isPaused ? "play.circle" : "pause.fill")
-                    }
-                    .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
-                    
-                    GlassButton(action: { reloadScene() }) {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                    .help("Recharger la scène")
+                GlassButton(action: { runCode() }) {
+                    Image(systemName: "play.fill")
+                        .foregroundColor(.green)
                 }
+                .keyboardShortcut("r", modifiers: .command)
+                .help("Exécuter le code JS (Cmd+R)")
+                
+                GlassButton(action: {
+                    isPaused.toggle()
+                    RealityRenderer.shared.isPaused = isPaused
+                }) {
+                    Image(systemName: isPaused ? "play.circle" : "pause.fill")
+                }
+                .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
+                
+                GlassButton(action: { reloadScene() }) {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .help("Recharger la scène")
             }
             
             ToolbarItemGroup(placement: .primaryAction) {
-                HStack(spacing: 12) {
-                    GlassButton(action: { CLIWindowManager.shared.toggle() }) {
-                        Image(systemName: "terminal")
-                    }
-                    .help("Terminal JS")
-                    
-                    GlassButton(action: { SceneInspectorWindowManager.shared.toggle() }) {
-                        Image(systemName: "list.bullet.indent")
-                            .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
-                    }
-                    .help("Inspecteur de scène")
-                    
-                    GlassButton(action: { DebugWindowManager.shared.toggle() }) {
-                        Image(systemName: "ladybug")
-                    }
-                    .help("Debug Réseau")
-                    
-                    GlassButton(action: { HelpWindowManager.shared.toggle() }) {
-                        Image(systemName: "questionmark.circle")
-                    }
-                    .help("Aide et exemples")
-                    
-                    GlassButton(action: { 
-                        codeStore.isLineWrapping.toggle()
-                    }) {
-                        Image(systemName: "text.wordwrap")
-                            .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
-                    }
-                    .help("Retour à la ligne automatique")
-                    
-                    GlassButton(action: {
-                        withAnimation(.spring()) {
-                            isEditorVisible.toggle()
-                        }
-                    }) {
-                        Image(systemName: isEditorVisible ? "sidebar.right" : "sidebar.left")
-                            .foregroundColor(isEditorVisible ? .blue : .primary)
-                    }
-                    .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
+                GlassButton(action: { CLIWindowManager.shared.toggle() }) {
+                    Image(systemName: "terminal")
                 }
+                .help("Terminal JS")
+                
+                GlassButton(action: { SceneInspectorWindowManager.shared.toggle() }) {
+                    Image(systemName: "list.bullet.indent")
+                        .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
+                }
+                .help("Inspecteur de scène")
+                
+                GlassButton(action: { DebugWindowManager.shared.toggle() }) {
+                    Image(systemName: "ladybug")
+                }
+                .help("Debug Réseau")
+                
+                GlassButton(action: { HelpWindowManager.shared.toggle() }) {
+                    Image(systemName: "questionmark.circle")
+                }
+                .help("Aide et exemples")
+                
+                GlassButton(action: { 
+                    codeStore.isLineWrapping.toggle()
+                }) {
+                    Image(systemName: "text.wordwrap")
+                        .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
+                }
+                .help("Retour à la ligne automatique")
+                
+                GlassButton(action: {
+                    withAnimation(.spring()) {
+                        isEditorVisible.toggle()
+                    }
+                }) {
+                    Image(systemName: isEditorVisible ? "sidebar.right" : "sidebar.left")
+                        .foregroundColor(isEditorVisible ? .blue : .primary)
+                }
+                .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
             }
         }
         .onAppear {
