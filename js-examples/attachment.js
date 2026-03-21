@@ -24,6 +24,8 @@ let satellite = spawn('box', 'Satellite')
 
 
 // Hierarchy created: Planet -> Moon -> Satellite
+setCamera(0, 3, 5, 0, 0, 0);
+
 cameraMode('cinematic');
 
 

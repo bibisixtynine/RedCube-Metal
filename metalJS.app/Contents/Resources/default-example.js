@@ -2,6 +2,8 @@
 // Sol épuré, gravité, et contrôle caméra cinématique.
 
 // Utiliser le nouveau mode caméra pour un orbit automatique facile
+setCamera(0, 10, 15, 0, 0, 0);
+
 cameraMode('cinematic');
 
 let floor = spawn('box', 'Floor')
