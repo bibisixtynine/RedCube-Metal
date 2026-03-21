@@ -31,6 +31,7 @@ struct MetalApp: App {
         WindowGroup {
             ContentView()
         }
+        .windowToolbarStyle(.unified)
     }
 }
 
@@ -315,115 +316,163 @@ class CodeStore: ObservableObject {
     }
 }
 
+struct VisualEffectView: NSViewRepresentable {
+    let material: NSVisualEffectView.Material
+    let blendingMode: NSVisualEffectView.BlendingMode
+    
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = blendingMode
+        view.state = .active
+        return view
+    }
+    
+    func updateNSView(_ nsView: NSVisualEffectView, context: Context) {
+        nsView.material = material
+        nsView.blendingMode = blendingMode
+    }
+}
+
+struct GlassButton<Content: View>: View {
+    let content: Content
+    let action: () -> Void
+    
+    init(action: @escaping () -> Void, @ViewBuilder content: () -> Content) {
+        self.action = action
+        self.content = content()
+    }
+    
+    var body: some View {
+        Button(action: action) {
+            content
+                .frame(width: 18, height: 18)
+                .padding(8)
+                .background(
+                    VisualEffectView(material: .selection, blendingMode: .withinWindow)
+                        .clipShape(Circle())
+                )
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct ContentView: View {
     @ObservedObject var codeStore = CodeStore.shared
     @ObservedObject var inspectorManager = SceneInspectorWindowManager.shared
     @State private var isPaused = false
     @State private var hasInitialized = false
     @State private var isDraggingObject = false
+    @State private var isEditorVisible = true
     
     var body: some View {
-        HStack(spacing: 0) {
-            ZStack {
-                RealityKitView()
-                    .gesture(
-                        DragGesture(minimumDistance: 0)
-                            .onChanged { value in
-                                if !isDraggingObject {
-                                    RealityRenderer.shared.startDragging(at: value.startLocation)
-                                    isDraggingObject = true
-                                }
-                                RealityRenderer.shared.updateDragging(at: value.location)
+        ZStack {
+            // Full Screen 3D Background
+            RealityKitView()
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            if !isDraggingObject {
+                                RealityRenderer.shared.startDragging(at: value.startLocation)
+                                isDraggingObject = true
                             }
-                            .onEnded { _ in
-                                RealityRenderer.shared.endDragging()
-                                isDraggingObject = false
-                            }
+                            RealityRenderer.shared.updateDragging(at: value.location)
+                        }
+                        .onEnded { _ in
+                            RealityRenderer.shared.endDragging()
+                            isDraggingObject = false
+                        }
+                )
+                .edgesIgnoringSafeArea(.all)
+            
+            if isPaused {
+                Rectangle()
+                    .fill(Color.black.opacity(0.3))
+                    .edgesIgnoringSafeArea(.all)
+                    .overlay(
+                        Image(systemName: "pause.circle.fill")
+                            .resizable()
+                            .frame(width: 100, height: 100)
+                            .foregroundColor(.white.opacity(0.8))
                     )
+                    .allowsHitTesting(false)
+            }
+            
+            // Floating Glass Editor Panel
+            HStack(spacing: 0) {
+                Spacer()
                 
-                if isPaused {
-                    Rectangle()
-                        .fill(Color.black.opacity(0.5))
-                        .overlay(
-                            Image(systemName: "pause.circle.fill")
-                                .resizable()
-                                .frame(width: 100, height: 100)
-                                .foregroundColor(.white)
-                        )
+                if isEditorVisible {
+                    VStack(spacing: 0) {
+                        HStack {
+                            Text("JavaScript Editor")
+                                .font(.system(size: 13, weight: .bold))
+                                .foregroundColor(.secondary)
+                            Spacer()
+                        }
+                        .padding(.horizontal)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
+                        
+                        CodeEditor(text: $codeStore.jsCode, isLineWrapping: codeStore.isLineWrapping)
+                            .frame(width: 380)
+                            .layoutPriority(1)
+                            .padding(.horizontal, 10)
+                            .padding(.bottom, 10)
+                        
+                        if codeStore.showSuggestions {
+                            Divider()
+                                .padding(.top, 4)
+                            SuggestionOverlay()
+                                .padding(.horizontal)
+                                .padding(.bottom, 10)
+                        }
+                    }
+                    .frame(width: 400)
+                    .background(
+                        VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
+                            .clipShape(RoundedRectangle(cornerRadius: 20))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
+                    .padding(.trailing, 20)
+                    .padding(.vertical, 40)
+                    .transition(.move(edge: .trailing).combined(with: .opacity))
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            
-            VStack {
-                Text("JavaScript Editor")
-                    .font(.headline)
-                    .padding(.top)
-                
-                HStack {
-                    Spacer()
-                    Button(action: { loadFile() }) {
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                HStack(spacing: 12) {
+                    GlassButton(action: { loadFile() }) {
                         Image(systemName: "folder")
                     }
                     .help("Charger un fichier JS")
                     
-                    Button(action: { saveFile() }) {
+                    GlassButton(action: { saveFile() }) {
                         Image(systemName: "square.and.arrow.down")
                     }
                     .help("Sauvegarder le fichier JS")
-                    
-                    Button(action: { HelpWindowManager.shared.toggle() }) {
-                        Image(systemName: "questionmark.circle")
-                    }
-                    .help("Aide et exemples")
-                    
-                    Button(action: { DebugWindowManager.shared.toggle() }) {
-                        Image(systemName: "ladybug")
-                    }
-                    .help("Debug Réseau")
-                    
-                    Button(action: { CLIWindowManager.shared.toggle() }) {
-                        Image(systemName: "terminal")
-                    }
-                    .help("Terminal JS")
-                    
-                    Button(action: { 
-                        codeStore.isLineWrapping.toggle()
-                    }) {
-                        Image(systemName: "text.wordwrap")
-                            .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
-                    }
-                    .help("Retour à la ligne automatique")
-                    
-                    Spacer()
                 }
-                .padding(.bottom, 4)
-                
-                CodeEditor(text: $codeStore.jsCode, isLineWrapping: codeStore.isLineWrapping)
-                    .frame(width: 400)
-                    .cornerRadius(8)
-                    .padding(.horizontal)
-                    .padding(.top)
-                    .layoutPriority(1)
-                
-                if codeStore.showSuggestions {
-                    Divider()
-                        .padding(.top, 4)
-                    SuggestionOverlay()
-                        .padding(.horizontal)
-                        .padding(.bottom, 4)
-                        .background(Color.black.opacity(0.02))
-                }
-                
-                HStack {
-                    Spacer()
-                    Button(action: { runCode() }) {
+            }
+            
+            ToolbarItemGroup(placement: .principal) {
+                HStack(spacing: 12) {
+                    GlassButton(action: { runCode() }) {
                         Image(systemName: "play.fill")
                             .foregroundColor(.green)
                     }
                     .keyboardShortcut("r", modifiers: .command)
                     .help("Exécuter le code JS (Cmd+R)")
                     
-                    Button(action: {
+                    GlassButton(action: {
                         isPaused.toggle()
                         RealityRenderer.shared.isPaused = isPaused
                     }) {
@@ -431,29 +480,64 @@ struct ContentView: View {
                     }
                     .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
                     
-                    Button(action: { reloadScene() }) {
+                    GlassButton(action: { reloadScene() }) {
                         Image(systemName: "arrow.clockwise")
                     }
                     .help("Recharger la scène")
+                }
+            }
+            
+            ToolbarItemGroup(placement: .primaryAction) {
+                HStack(spacing: 12) {
+                    GlassButton(action: { CLIWindowManager.shared.toggle() }) {
+                        Image(systemName: "terminal")
+                    }
+                    .help("Terminal JS")
                     
-                    Button(action: {
-                        SceneInspectorWindowManager.shared.toggle()
-                    }) {
+                    GlassButton(action: { SceneInspectorWindowManager.shared.toggle() }) {
                         Image(systemName: "list.bullet.indent")
                             .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
                     }
                     .help("Inspecteur de scène")
-                    Spacer()
+                    
+                    GlassButton(action: { DebugWindowManager.shared.toggle() }) {
+                        Image(systemName: "ladybug")
+                    }
+                    .help("Debug Réseau")
+                    
+                    GlassButton(action: { HelpWindowManager.shared.toggle() }) {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .help("Aide et exemples")
+                    
+                    GlassButton(action: { 
+                        codeStore.isLineWrapping.toggle()
+                    }) {
+                        Image(systemName: "text.wordwrap")
+                            .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
+                    }
+                    .help("Retour à la ligne automatique")
+                    
+                    GlassButton(action: {
+                        withAnimation(.spring()) {
+                            isEditorVisible.toggle()
+                        }
+                    }) {
+                        Image(systemName: isEditorVisible ? "sidebar.right" : "sidebar.left")
+                            .foregroundColor(isEditorVisible ? .blue : .primary)
+                    }
+                    .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
                 }
-                .padding(.bottom)
             }
-            .frame(width: 440)
-            .background(Color(NSColor.windowBackgroundColor))
         }
         .onAppear {
-            // Save/Restore main window position
             DispatchQueue.main.async {
                 if let window = NSApplication.shared.windows.first {
+                    window.titlebarAppearsTransparent = true
+                    window.titleVisibility = .hidden
+                    window.styleMask.insert(.fullSizeContentView)
+                    window.backgroundColor = .clear
+                    window.isMovableByWindowBackground = true
                     window.setFrameAutosaveName("MainWindow")
                 }
             }
@@ -579,19 +663,22 @@ struct CodeEditor: NSViewRepresentable {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true // Enabled for no-wrap mode
+        scrollView.drawsBackground = false // Make scroll view transparent
         
         let textView = NSTextView(frame: .zero)
         textView.isRichText = true // Required for multiple colors
+        textView.drawsBackground = false // Make text view transparent
+        textView.backgroundColor = .clear
+        textView.insertionPointColor = NSColor.white // Better visibility on glass
         textView.allowsUndo = true
-        textView.autoresizingMask = [.width]
-        textView.font = .monospacedSystemFont(ofSize: 15, weight: .regular)
+        textView.autoresizingMask = [.width, .height]
+        textView.font = NSFont.monospacedSystemFont(ofSize: 15, weight: .regular)
         textView.delegate = context.coordinator
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
         textView.isAutomaticTextReplacementEnabled = false
         textView.isAutomaticSpellingCorrectionEnabled = false
-        textView.backgroundColor = .textBackgroundColor
-        textView.textColor = .labelColor
+        textView.textColor = .white
         
         scrollView.documentView = textView
         CodeStore.shared.textView = textView
