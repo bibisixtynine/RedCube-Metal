@@ -15,31 +15,31 @@ function updateCamera() {
 updateCamera();
 
 // 1. Sol épuré (Rectangle arrondi peu épais)
-let floor = spawn('box', 'Floor');
-setScale(floor, 25, 0.2, 25);
-setPosition(floor, 0, -5, 0);
-setColor(floor, 0.6, 0.6, 0.7, 1, 0, 0.1); // Gris clair non-métallique
-setPhysics(floor, 'static');
+let floor = spawn('box', 'Floor')
+    .setScale(25, 0.2, 25)
+    .setPosition(0, -5, 0)
+    .setColor(0.6, 0.6, 0.7, 1, 0, 0.1) // Gris clair non-métallique
+    .setPhysics('static');
 
 let cubes = [];
 let frameCount = 0;
 
 function spawnCube() {
-    let id = spawn('box');
     let r = Math.random(), g = Math.random(), b = Math.random();
     let x = (Math.random() - 0.5) * 15;
     let z = (Math.random() - 0.5) * 15;
     
-    setPosition(id, x, 20, z);
-    setRotation(id, Math.random() * 6, Math.random() * 6, Math.random() * 6);
-    setColor(id, r, g, b, 1, 0.8, 0.2);
-    setScale(id, 0.6, 0.6, 0.6);
-    setPhysics(id, 'dynamic');
+    let cube = spawn('box')
+        .setPosition(x, 20, z)
+        .setRotation(Math.random() * 6, Math.random() * 6, Math.random() * 6)
+        .setColor(r, g, b, 1, 0.8, 0.2)
+        .setScale(0.6, 0.6, 0.6)
+        .setPhysics('dynamic');
     
-    cubes.push(id);
+    cubes.push(cube);
     if (cubes.length > 100) {
         let old = cubes.shift();
-        remove(old);
+        old.remove();
     }
 }
 

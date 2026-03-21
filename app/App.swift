@@ -703,93 +703,81 @@ struct CLIView: View {
     
     let jsFunctionHelp: [String: FunctionDoc] = [
         "spawn": FunctionDoc(
-            signature: "spawn(type, x, y, z)",
-            description: "Spawns a new 3D entity in the scene.",
+            signature: "spawn(type, name)",
+            description: "Spawns a new 3D entity and returns an interactive object.",
             parameters: [
-                .init(name: "type", desc: "'cube', 'sphere', 'cone', 'text'"),
-                .init(name: "x, y, z", desc: "Position coordinates")
+                .init(name: "type", desc: "'box', 'sphere', 'cone', etc."),
+                .init(name: "name", desc: "Optional debug name")
             ]),
         "setPosition": FunctionDoc(
-            signature: "setPosition(id, x, y, z)",
-            description: "Moves an entity to a new position.",
+            signature: "entity.setPosition(x, y, z)",
+            description: "Sets the entity's position in world space.",
             parameters: [
-                .init(name: "id", desc: "Entity ID returned by spawn"),
-                .init(name: "x, y, z", desc: "New coordinates")
+                .init(name: "x, y, z", desc: "Position coordinates")
             ]),
         "setRotation": FunctionDoc(
-            signature: "setRotation(id, x, y, z)",
-            description: "Sets the rotation of an entity.",
+            signature: "entity.setRotation(x, y, z)",
+            description: "Sets the entity's rotation (Euler angles in radians).",
             parameters: [
-                .init(name: "id", desc: "Entity ID"),
-                .init(name: "x, y, z", desc: "Euler angles in degrees")
+                .init(name: "x, y, z", desc: "Rotation angles")
             ]),
         "setScale": FunctionDoc(
-            signature: "setScale(id, x, y, z)",
-            description: "Sets the scale of an entity.",
+            signature: "entity.setScale(x, y, z)",
+            description: "Sets the entity's scale multiplier.",
             parameters: [
-                .init(name: "id", desc: "Entity ID"),
-                .init(name: "x, y, z", desc: "Scale factors (default 1.0)")
+                .init(name: "x, y, z", desc: "Scale factors")
             ]),
         "setColor": FunctionDoc(
-            signature: "setColor(id, r, g, b, a)",
-            description: "Changes the color and opacity.",
+            signature: "entity.setColor(r, g, b, a, metallic, roughness)",
+            description: "Sets the material color and properties.",
             parameters: [
-                .init(name: "id", desc: "Entity ID"),
-                .init(name: "r, g, b, a", desc: "RGBA values (0.0 to 1.0)")
+                .init(name: "r, g, b, a", desc: "RGBA values (0.0 to 1.0)"),
+                .init(name: "metallic", desc: "Metallic factor (0.0 to 1.0)"),
+                .init(name: "roughness", desc: "Roughness factor (0.0 to 1.0)")
             ]),
         "remove": FunctionDoc(
-            signature: "remove(id)",
-            description: "Removes an entity from the scene.",
-            parameters: [
-                .init(name: "id", desc: "Entity ID to remove")
-            ]),
+            signature: "entity.remove()",
+            description: "Removes the entity from the scene.",
+            parameters: []),
         "setCamera": FunctionDoc(
             signature: "setCamera(x, y, z, tx, ty, tz)",
-            description: "Positions the camera and its target.",
+            description: "Positions the camera and its look-at target.",
             parameters: [
                 .init(name: "x, y, z", desc: "Camera position"),
-                .init(name: "tx, ty, tz", desc: "Target (look-at) point")
+                .init(name: "tx, ty, tz", desc: "Target point")
             ]),
         "setPhysics": FunctionDoc(
-            signature: "setPhysics(id, mass, rest, fric)",
-            description: "Configures physics for an entity.",
+            signature: "entity.setPhysics(mode)",
+            description: "Changes the physics mode of the entity.",
             parameters: [
-                .init(name: "id", desc: "Entity ID"),
-                .init(name: "mass", desc: "Mass (e.g., 1.0)"),
-                .init(name: "rest", desc: "Restitution / Bounciness"),
-                .init(name: "fric", desc: "Friction coefficient")
+                .init(name: "mode", desc: "'static', 'dynamic', or 'kinematic'")
             ]),
         "setTexture": FunctionDoc(
-            signature: "setTexture(id, path)",
-            description: "Applies an image texture.",
+            signature: "entity.setTexture(name)",
+            description: "Applies a texture from the bundle (e.g. 'grid').",
             parameters: [
-                .init(name: "id", desc: "Entity ID"),
-                .init(name: "path", desc: "Absolute file path to image")
+                .init(name: "name", desc: "Texture filename")
             ]),
         "requestAnimationFrame": FunctionDoc(
             signature: "requestAnimationFrame(callback)",
-            description: "Schedules a function for the next frame.",
+            description: "Schedules a function for the next frame update.",
             parameters: [
                 .init(name: "callback", desc: "Function to execute")
             ]),
         "console.log": FunctionDoc(
             signature: "console.log(msg)",
-            description: "Prints to the debug log.",
+            description: "Prints a message to the debug log.",
             parameters: [
-                .init(name: "msg", desc: "The message to display")
+                .init(name: "msg", desc: "Message text")
             ]),
         "lock": FunctionDoc(
-            signature: "lock(id)",
-            description: "Prevents an entity from being picked or dragged.",
-            parameters: [
-                .init(name: "id", desc: "Entity ID")
-            ]),
+            signature: "entity.lock()",
+            description: "Prevents the entity from being picked or dragged.",
+            parameters: []),
         "unlock": FunctionDoc(
-            signature: "unlock(id)",
-            description: "Allows an entity to be picked or dragged again.",
-            parameters: [
-                .init(name: "id", desc: "Entity ID")
-            ])
+            signature: "entity.unlock()",
+            description: "Allows the entity to be picked and dragged again.",
+            parameters: [])
     ]
 
     func updateSuggestions(for text: String) {

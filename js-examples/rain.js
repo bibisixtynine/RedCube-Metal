@@ -4,12 +4,12 @@
 setCamera(0, 10, 15, 0, 0, 0);
 
 // 1. Création du sol
-let floor = spawn('box', 'Floor');
-setScale(floor, 20, 0.1, 20);
-setPosition(floor, 0, -5, 0);
-setColor(floor, 1, 1, 1, 1, 0, 1);
-setTexture(floor, 'grid');
-setPhysics(floor, 'static');
+let floor = spawn('box', 'Floor')
+    .setScale(20, 0.1, 20)
+    .setPosition(0, -5, 0)
+    .setColor(1, 1, 1, 1, 0, 1)
+    .setTexture('grid')
+    .setPhysics('static');
 
 let cubes = [];
 let frameCount = 0;
@@ -23,7 +23,6 @@ function randomColor() {
 }
 
 function spawnCube() {
-    let id = spawn('box', 'RainCube');
     let color = randomColor();
     
     // Position aléatoire en haut
@@ -31,14 +30,13 @@ function spawnCube() {
     let z = (Math.random() - 0.5) * 10;
     let y = 15;
     
-    setPosition(id, x, y, z);
-    setColor(id, color.r, color.g, color.b, 1, 0.5, 0.2);
-    setScale(id, 0.5, 0.5, 0.5);
+    let cube = spawn('box', 'RainCube')
+        .setPosition(x, y, z)
+        .setColor(color.r, color.g, color.b, 1, 0.5, 0.2)
+        .setScale(0.5, 0.5, 0.5)
+        .setPhysics('dynamic');
     
-    // Activer la gravité !
-    setPhysics(id, 'dynamic');
-    
-    cubes.push({ id: id, time: Date.now() });
+    cubes.push({ obj: cube, time: Date.now() });
 }
 
 function loop(t) {
