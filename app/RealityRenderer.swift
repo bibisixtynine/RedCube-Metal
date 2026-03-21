@@ -5,12 +5,34 @@ import QuartzCore
 import simd
 
 class RealityARView: ARView {
+    private var dragStartedInContent = false
+    
     override func scrollWheel(with event: NSEvent) {
         RealityRenderer.shared.handleScroll(deltaX: Float(event.scrollingDeltaX), deltaY: Float(event.scrollingDeltaY))
     }
     
+    override func mouseDown(with event: NSEvent) {
+        super.mouseDown(with: event)
+        // Check if the click is in the content area (below the title bar)
+        if let window = self.window {
+            let locationInWindow = event.locationInWindow
+            let windowHeight = window.frame.height
+            let titleBarHeight: CGFloat = 38
+            // locationInWindow.y is from bottom, so title bar is at top
+            dragStartedInContent = locationInWindow.y < (windowHeight - titleBarHeight)
+        } else {
+            dragStartedInContent = true
+        }
+    }
+    
     override func mouseDragged(with event: NSEvent) {
+        guard dragStartedInContent else { return }
         RealityRenderer.shared.handleDrag(dx: Float(event.deltaX), dy: Float(event.deltaY))
+    }
+    
+    override func mouseUp(with event: NSEvent) {
+        super.mouseUp(with: event)
+        dragStartedInContent = false
     }
     
     override func magnify(with event: NSEvent) {
