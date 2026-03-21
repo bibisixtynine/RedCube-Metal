@@ -349,33 +349,9 @@ struct GlassButton<Content: View>: View {
                 .font(.system(size: 14, weight: .medium))
                 .frame(width: 20, height: 20)
                 .padding(10)
-                .background(
-                    Circle()
-                        .fill(Color.black.opacity(0.15))
-                )
-                .background(
-                    VisualEffectView(material: .popover, blendingMode: .withinWindow)
-                        .clipShape(Circle())
-                        .opacity(0.3)
-                )
-                .overlay(
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.35),
-                                    Color.cyan.opacity(0.2),
-                                    Color.white.opacity(0.1)
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 1.5
-                        )
-                )
-                .shadow(color: Color.cyan.opacity(0.08), radius: 6, x: 0, y: 0)
         }
         .buttonStyle(.plain)
+        .glassEffect(.regular, in: .circle)
     }
 }
 
@@ -453,14 +429,7 @@ struct ContentView: View {
                         }
                     }
                     .frame(width: 400)
-                    .background(
-                        VisualEffectView(material: .hudWindow, blendingMode: .withinWindow)
-                            .clipShape(RoundedRectangle(cornerRadius: 20))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.white.opacity(0.1), lineWidth: 0.5)
-                    )
+                    .glassEffect(.regular, in: .rect(cornerRadius: 20))
                     .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
                     .padding(.trailing, 20)
                     .padding(.vertical, 40)
