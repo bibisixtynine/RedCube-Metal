@@ -114,7 +114,7 @@ class RealityRenderer: NSObject {
         arView?.environment.background = .color(.black)
         
         print("RealityRenderer: Initializing...")
-        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback)
+        qjs_init(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback)
         
         arView?.scene.publisher(for: SceneEvents.Update.self)
             .sink { [weak self] event in
@@ -169,7 +169,7 @@ class RealityRenderer: NSObject {
             entity.removeFromParent()
         }
         entities.removeAll()
-        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback)
+        qjs_reset(qjsSpawnCallback, qjsSetPositionCallback, qjsSetRotationCallback, qjsSetScaleCallback, qjsSetColorCallback, qjsRemoveCallback, qjsSetCameraCallback, qjsSetPhysicsCallback, qjsSetTextureCallback, qjsSetLockCallback, qjsAttachToCallback)
     }
     
     func spawn(type: String, name: String) -> String {
@@ -264,6 +264,16 @@ class RealityRenderer: NSObject {
         }
         
         setLock(id: item.id, locked: item.isLocked ? 1 : 0)
+    }
+    
+    func attachTo(id: String, parentId: String?) {
+        guard let child = entities[id] else { return }
+        
+        if let pid = parentId, let parent = entities[pid] {
+            parent.addChild(child, preservingWorldTransform: true)
+        } else {
+            rootAnchor.addChild(child, preservingWorldTransform: true)
+        }
     }
     
     func setPosition(id: String, x: Float, y: Float, z: Float) {
@@ -562,4 +572,10 @@ let qjsSetTextureCallback: SetTextureCallback = { id, name in
 let qjsSetLockCallback: SetLockCallback = { id, locked in
     guard let id = id else { return }
     RealityRenderer.shared.setLock(id: String(cString: id), locked: Int(locked))
+}
+
+let qjsAttachToCallback: AttachToCallback = { childId, parentId in
+    guard let childId = childId else { return }
+    let pid = parentId != nil ? String(cString: parentId!) : nil
+    RealityRenderer.shared.attachTo(id: String(cString: childId), parentId: pid)
 }

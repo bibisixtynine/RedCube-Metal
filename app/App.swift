@@ -786,7 +786,13 @@ struct CLIView: View {
         "unlock": FunctionDoc(
             signature: "entity.unlock()",
             description: "Allows the entity to be picked and dragged again.",
-            parameters: [])
+            parameters: []),
+        "attachTo": FunctionDoc(
+            signature: "entity.attachTo(parent)",
+            description: "Attaches this entity to a parent entity (or scene if null).",
+            parameters: [
+                .init(name: "parent", desc: "Parent entity object or ID (null to detach)")
+            ])
     ]
 
     func updateSuggestions(for text: String) {
