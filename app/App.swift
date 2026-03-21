@@ -362,6 +362,7 @@ struct ContentView: View {
     @State private var hasInitialized = false
     @State private var isDraggingObject = false
     @State private var isEditorVisible = true
+    @AppStorage("editorWidth") private var editorWidth: Double = 400.0
     
     var body: some View {
         ZStack {
@@ -403,34 +404,62 @@ struct ContentView: View {
                 Spacer()
                 
                 if isEditorVisible {
-                    VStack(spacing: 0) {
-                        HStack {
-                            Text("JavaScript Editor")
-                                .font(.system(size: 13, weight: .bold))
-                                .foregroundColor(.secondary)
-                            Spacer()
-                        }
-                        .padding(.horizontal)
-                        .padding(.top, 12)
-                        .padding(.bottom, 8)
-                        
-                        CodeEditor(text: $codeStore.jsCode, isLineWrapping: codeStore.isLineWrapping)
-                            .frame(width: 380)
-                            .layoutPriority(1)
-                            .padding(.horizontal, 10)
-                            .padding(.bottom, 10)
-                        
-                        if codeStore.showSuggestions {
-                            Divider()
-                                .padding(.top, 4)
-                            SuggestionOverlay()
-                                .padding(.horizontal)
+                    HStack(spacing: 0) {
+                        // Resizable handle
+                        Rectangle()
+                            .fill(Color.white.opacity(0.001)) // Invisible but hit-testable
+                            .frame(width: 20)
+                            .contentShape(Rectangle())
+                            .onHover { inside in
+                                if inside {
+                                    NSCursor.resizeLeftRight.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { value in
+                                        let delta = value.translation.width
+                                        let newWidth = editorWidth - delta
+                                        editorWidth = max(250, min(800, newWidth))
+                                    }
+                            )
+                            .overlay(
+                                Capsule()
+                                    .fill(Color.secondary.opacity(0.3))
+                                    .frame(width: 4, height: 40)
+                            )
+
+                        VStack(spacing: 0) {
+                            HStack {
+                                Text("JavaScript Editor")
+                                    .font(.system(size: 13, weight: .bold))
+                                    .foregroundColor(.secondary)
+                                Spacer()
+                            }
+                            .padding(.horizontal)
+                            .padding(.top, 12)
+                            .padding(.bottom, 8)
+                            
+                            CodeEditor(text: $codeStore.jsCode, isLineWrapping: codeStore.isLineWrapping)
+                                .frame(width: editorWidth - 20)
+                                .layoutPriority(1)
+                                .padding(.horizontal, 10)
                                 .padding(.bottom, 10)
+                            
+                            if codeStore.showSuggestions {
+                                Divider()
+                                    .padding(.top, 4)
+                                SuggestionOverlay()
+                                    .padding(.horizontal)
+                                    .padding(.bottom, 10)
+                            }
                         }
+                        .frame(width: editorWidth)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 20))
+                        .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
                     }
-                    .frame(width: 400)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 20))
-                    .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
                     .padding(.trailing, 20)
                     .padding(.vertical, 40)
                     .transition(.move(edge: .trailing).combined(with: .opacity))

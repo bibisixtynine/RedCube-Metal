@@ -1,7 +1,6 @@
 // The Wall
-
+setCamera(0, 12, 30, 0, 0, 0);
 cameraMode('cinematic')
-setCamera(0, 12, 20, 0, 0, 0);
 
 
 // 1. Floor
