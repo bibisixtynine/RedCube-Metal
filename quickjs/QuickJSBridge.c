@@ -189,6 +189,29 @@ void qjs_init(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback 
     JS_SetPropertyStr(ctx, console, "log", JS_NewCFunction(ctx, js_console_log, "log", 1));
     JS_SetPropertyStr(ctx, global_obj, "console", console);
     JS_FreeValue(ctx, global_obj);
+
+    // Object-Oriented Style Wrapper
+    const char *oo_prelude =
+        "(function() {"
+        "  const _spawn = globalThis.spawn;"
+        "  globalThis.spawn = function(type, name) {"
+        "    const id = _spawn(type, name);"
+        "    return {"
+        "      id: id,"
+        "      toString: function() { return this.id; },"
+        "      setPosition: function(x, y, z) { setPosition(this.id, x, y, z); return this; },"
+        "      setRotation: function(x, y, z) { setRotation(this.id, x, y, z); return this; },"
+        "      setScale: function(x, y, z) { setScale(this.id, x, y, z); return this; },"
+        "      setColor: function(r, g, b, a, m, r2) { setColor(this.id, r, g, b, a, m, r2); return this; },"
+        "      setPhysics: function(mode) { setPhysics(this.id, mode); return this; },"
+        "      setTexture: function(name) { setTexture(this.id, name); return this; },"
+        "      remove: function() { remove(this.id); },"
+        "      lock: function() { lock(this.id); },"
+        "      unlock: function() { unlock(this.id); }"
+        "    };"
+        "  };"
+        "})();";
+    qjs_run_code(oo_prelude);
 }
 
 void qjs_reset(SpawnCallback spawn, SetPositionCallback pos, SetRotationCallback rot, SetScaleCallback scale, SetColorCallback color, RemoveCallback remove, SetCameraCallback camera, SetPhysicsCallback physics, SetTextureCallback texture, SetLockCallback lock) {

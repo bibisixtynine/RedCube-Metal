@@ -259,7 +259,6 @@ class RealityRenderer: NSObject {
                     if lockedEntities.contains(id) {
                         return // Locked!
                     }
-                    targetId = id
                     break
                 }
                 current = current?.parent
