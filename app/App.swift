@@ -22,9 +22,78 @@ struct MetalApp: App {
     }
 }
 
+class SyntaxHighlighter {
+    static let shared = SyntaxHighlighter()
+    
+    private let keywords = Set([
+        "var", "let", "const", "function", "async", "await", "return", "if", "else", "for", "while", "do", "switch", "case", "default", "break", "continue", "try", "catch", "finally", "throw", "class", "extends", "super", "this", "new", "static", "instanceof", "typeof", "void", "delete", "in", "of", "import", "export", "from", "as", "get", "set"
+    ])
+    
+    private let literals = Set(["true", "false", "null", "undefined", "NaN", "Infinity"])
+    
+    private let builtins = Set([
+        "console", "Math", "JSON", "Array", "Object", "String", "Number", "Boolean", "RegExp", "Date", "Error", "globalThis", "window", "document",
+        "spawn", "setPosition", "setRotation", "setScale", "setColor", "remove", "setCamera", "setPhysics", "setTexture", "requestAnimationFrame", "attachTo"
+    ])
+
+    func highlight(_ textStorage: NSTextStorage) {
+        let string = textStorage.string
+        if string.isEmpty { return }
+        let range = NSRange(location: 0, length: (string as NSString).length)
+        
+        print("SyntaxHighlighter: Highlighting \(string.count) characters")
+        
+        textStorage.beginEditing()
+        // Reset colors and font to ensure consistency
+        textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: range)
+        textStorage.addAttribute(.font, value: NSFont.monospacedSystemFont(ofSize: 13, weight: .regular), range: range)
+        
+        // Comments
+        let commentRegex = try? NSRegularExpression(pattern: "//.*|/\\*[\\s\\S]*?\\*/", options: [])
+        commentRegex?.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
+            if let matchRange = match?.range {
+                textStorage.addAttribute(.foregroundColor, value: NSColor.secondaryLabelColor, range: matchRange)
+            }
+        }
+        
+        // Strings
+        let stringRegex = try? NSRegularExpression(pattern: "\".*?\"|'.*?'|`[\\s\\S]*?`", options: [])
+        stringRegex?.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
+            if let matchRange = match?.range {
+                textStorage.addAttribute(.foregroundColor, value: NSColor.systemGreen, range: matchRange)
+            }
+        }
+        
+        // Numbers
+        let numberRegex = try? NSRegularExpression(pattern: "\\b-?\\d+(\\.\\d+)?\\b", options: [])
+        numberRegex?.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
+            if let matchRange = match?.range {
+                textStorage.addAttribute(.foregroundColor, value: NSColor.systemOrange, range: matchRange)
+            }
+        }
+        
+        // Words (Keywords, literals, builtins)
+        let wordRegex = try? NSRegularExpression(pattern: "\\b[a-zA-Z_$][a-zA-Z0-9_$]*\\b", options: [])
+        wordRegex?.enumerateMatches(in: string, options: [], range: range) { match, _, _ in
+            if let matchRange = match?.range {
+                let word = (string as NSString).substring(with: matchRange)
+                if keywords.contains(word) {
+                    textStorage.addAttribute(.foregroundColor, value: NSColor.systemPurple, range: matchRange)
+                } else if literals.contains(word) {
+                    textStorage.addAttribute(.foregroundColor, value: NSColor.systemPink, range: matchRange)
+                } else if builtins.contains(word) {
+                    textStorage.addAttribute(.foregroundColor, value: NSColor.systemBlue, range: matchRange)
+                }
+            }
+        }
+        textStorage.endEditing()
+    }
+}
+
 class CodeStore: ObservableObject {
     static let shared = CodeStore()
     @Published var jsCode: String = ""
+    @Published var isLineWrapping: Bool = true
     weak var textView: NSTextView?
     
     func insertCode(_ text: String) {
@@ -140,11 +209,20 @@ struct ContentView: View {
                         Image(systemName: "terminal")
                     }
                     .help("Terminal JS")
+                    
+                    Button(action: { 
+                        codeStore.isLineWrapping.toggle()
+                    }) {
+                        Image(systemName: "text.wordwrap")
+                            .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
+                    }
+                    .help("Retour à la ligne automatique")
+                    
                     Spacer()
                 }
                 .padding(.bottom, 4)
                 
-                CodeEditor(text: $codeStore.jsCode)
+                CodeEditor(text: $codeStore.jsCode, isLineWrapping: codeStore.isLineWrapping)
                     .frame(width: 400)
                     .cornerRadius(8)
                     .padding()
@@ -308,21 +386,33 @@ struct RealityKitView: NSViewRepresentable {
 
 struct CodeEditor: NSViewRepresentable {
     @Binding var text: String
+    var isLineWrapping: Bool
     
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = false
+        scrollView.hasHorizontalScroller = true // Enabled for no-wrap mode
         
         let textView = NSTextView(frame: .zero)
-        textView.isRichText = false
+        textView.isRichText = true // Required for multiple colors
         textView.allowsUndo = true
         textView.autoresizingMask = [.width]
         textView.font = .monospacedSystemFont(ofSize: 13, weight: .regular)
         textView.delegate = context.coordinator
+        textView.isAutomaticQuoteSubstitutionEnabled = false
+        textView.isAutomaticDashSubstitutionEnabled = false
+        textView.isAutomaticTextReplacementEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.backgroundColor = .textBackgroundColor
+        textView.textColor = .labelColor
         
         scrollView.documentView = textView
         CodeStore.shared.textView = textView
+        
+        // Initial highlight
+        if let textStorage = textView.textStorage {
+            SyntaxHighlighter.shared.highlight(textStorage)
+        }
         
         return scrollView
     }
@@ -331,6 +421,20 @@ struct CodeEditor: NSViewRepresentable {
         if let textView = nsView.documentView as? NSTextView {
             if textView.string != text {
                 textView.string = text
+                if let textStorage = textView.textStorage {
+                    SyntaxHighlighter.shared.highlight(textStorage)
+                }
+            }
+            
+            // Update line wrapping
+            if isLineWrapping {
+                textView.isHorizontallyResizable = false
+                textView.textContainer?.widthTracksTextView = true
+                textView.textContainer?.containerSize = NSSize(width: nsView.contentSize.width, height: CGFloat.greatestFiniteMagnitude)
+            } else {
+                textView.isHorizontallyResizable = true
+                textView.textContainer?.widthTracksTextView = false
+                textView.textContainer?.containerSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
             }
         }
     }
@@ -349,6 +453,9 @@ struct CodeEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             if let textView = notification.object as? NSTextView {
                 self.parent.text = textView.string
+                if let textStorage = textView.textStorage {
+                    SyntaxHighlighter.shared.highlight(textStorage)
+                }
             }
         }
     }
