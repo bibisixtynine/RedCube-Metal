@@ -376,13 +376,15 @@ struct ContentView: View {
                 .gesture(
                     DragGesture(minimumDistance: 0)
                         .onChanged { value in
+                            if value.startLocation.y < 30 { return } // Ignore title bar area
                             if !isDraggingObject {
                                 RealityRenderer.shared.startDragging(at: value.startLocation)
                                 isDraggingObject = true
                             }
                             RealityRenderer.shared.updateDragging(at: value.location)
                         }
-                        .onEnded { _ in
+                        .onEnded { value in
+                            if value.startLocation.y < 30 { return }
                             RealityRenderer.shared.endDragging()
                             isDraggingObject = false
                         }
@@ -537,7 +539,6 @@ struct ContentView: View {
                     window.titleVisibility = .hidden
                     window.styleMask.insert(.fullSizeContentView)
                     window.backgroundColor = .clear
-                    window.isMovableByWindowBackground = true
                     window.setFrameAutosaveName("MainWindow")
                 }
             }
