@@ -438,26 +438,28 @@ struct ContentView: View {
             }
         }
         .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
+            ToolbarItem(placement: .navigation) {
                 GlassButton(action: { loadFile() }) {
                     Image(systemName: "folder")
                 }
                 .help("Charger un fichier JS")
-                
+            }
+            ToolbarItem(placement: .navigation) {
                 GlassButton(action: { saveFile() }) {
                     Image(systemName: "square.and.arrow.down")
                 }
                 .help("Sauvegarder le fichier JS")
             }
             
-            ToolbarItemGroup(placement: .principal) {
+            ToolbarItem(placement: .principal) {
                 GlassButton(action: { runCode() }) {
                     Image(systemName: "play.fill")
                         .foregroundColor(.green)
                 }
                 .keyboardShortcut("r", modifiers: .command)
                 .help("Exécuter le code JS (Cmd+R)")
-                
+            }
+            ToolbarItem(placement: .principal) {
                 GlassButton(action: {
                     isPaused.toggle()
                     RealityRenderer.shared.isPaused = isPaused
@@ -465,52 +467,59 @@ struct ContentView: View {
                     Image(systemName: isPaused ? "play.circle" : "pause.fill")
                 }
                 .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
-                
+            }
+            ToolbarItem(placement: .principal) {
                 GlassButton(action: { reloadScene() }) {
                     Image(systemName: "arrow.clockwise")
                 }
                 .help("Recharger la scène")
             }
             
-            ToolbarItemGroup(placement: .primaryAction) {
+            ToolbarItem(placement: .primaryAction) {
                 GlassButton(action: { CLIWindowManager.shared.toggle() }) {
                     Image(systemName: "terminal")
                 }
                 .help("Terminal JS")
-                
+            }
+            ToolbarItem(placement: .primaryAction) {
                 GlassButton(action: { SceneInspectorWindowManager.shared.toggle() }) {
                     Image(systemName: "list.bullet.indent")
                         .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
                 }
                 .help("Inspecteur de scène")
-                
+            }
+            ToolbarItem(placement: .primaryAction) {
                 GlassButton(action: { DebugWindowManager.shared.toggle() }) {
                     Image(systemName: "ladybug")
                 }
                 .help("Debug Réseau")
-                
+            }
+            ToolbarItem(placement: .primaryAction) {
                 GlassButton(action: { HelpWindowManager.shared.toggle() }) {
                     Image(systemName: "questionmark.circle")
                 }
                 .help("Aide et exemples")
-                
-                GlassButton(action: { 
-                    codeStore.isLineWrapping.toggle()
-                }) {
-                    Image(systemName: "text.wordwrap")
-                        .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
-                }
-                .help("Retour à la ligne automatique")
-                
-                GlassButton(action: {
-                    withAnimation(.spring()) {
-                        isEditorVisible.toggle()
+            }
+            ToolbarItem(placement: .primaryAction) {
+                HStack(spacing: 6) {
+                    GlassButton(action: { 
+                        codeStore.isLineWrapping.toggle()
+                    }) {
+                        Image(systemName: "text.wordwrap")
+                            .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
                     }
-                }) {
-                    Image(systemName: isEditorVisible ? "sidebar.right" : "sidebar.left")
-                        .foregroundColor(isEditorVisible ? .blue : .primary)
+                    .help("Retour à la ligne automatique")
+                    
+                    GlassButton(action: {
+                        withAnimation(.spring()) {
+                            isEditorVisible.toggle()
+                        }
+                    }) {
+                        Image(systemName: isEditorVisible ? "sidebar.right" : "sidebar.left")
+                            .foregroundColor(isEditorVisible ? .blue : .primary)
+                    }
+                    .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
                 }
-                .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
             }
         }
         .onAppear {
