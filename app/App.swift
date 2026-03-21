@@ -439,69 +439,66 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                GlassButton(action: { loadFile() }) {
-                    Image(systemName: "folder")
+                HStack(spacing: 8) {
+                    GlassButton(action: { loadFile() }) {
+                        Image(systemName: "folder")
+                    }
+                    .help("Charger un fichier JS")
+                    
+                    GlassButton(action: { saveFile() }) {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                    .help("Sauvegarder le fichier JS")
                 }
-                .help("Charger un fichier JS")
-            }
-            ToolbarItem(placement: .navigation) {
-                GlassButton(action: { saveFile() }) {
-                    Image(systemName: "square.and.arrow.down")
-                }
-                .help("Sauvegarder le fichier JS")
-            }
-            
-            ToolbarItem(placement: .principal) {
-                GlassButton(action: { runCode() }) {
-                    Image(systemName: "play.fill")
-                        .foregroundColor(.green)
-                }
-                .keyboardShortcut("r", modifiers: .command)
-                .help("Exécuter le code JS (Cmd+R)")
-            }
-            ToolbarItem(placement: .principal) {
-                GlassButton(action: {
-                    isPaused.toggle()
-                    RealityRenderer.shared.isPaused = isPaused
-                }) {
-                    Image(systemName: isPaused ? "play.circle" : "pause.fill")
-                }
-                .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
-            }
-            ToolbarItem(placement: .principal) {
-                GlassButton(action: { reloadScene() }) {
-                    Image(systemName: "arrow.clockwise")
-                }
-                .help("Recharger la scène")
             }
             
-            ToolbarItem(placement: .primaryAction) {
-                GlassButton(action: { CLIWindowManager.shared.toggle() }) {
-                    Image(systemName: "terminal")
+            ToolbarItem(placement: .principal) {
+                HStack(spacing: 8) {
+                    GlassButton(action: { runCode() }) {
+                        Image(systemName: "play.fill")
+                            .foregroundColor(.green)
+                    }
+                    .keyboardShortcut("r", modifiers: .command)
+                    .help("Exécuter le code JS (Cmd+R)")
+                    
+                    GlassButton(action: {
+                        isPaused.toggle()
+                        RealityRenderer.shared.isPaused = isPaused
+                    }) {
+                        Image(systemName: isPaused ? "play.circle" : "pause.fill")
+                    }
+                    .help(isPaused ? "Reprendre l'animation" : "Mettre en pause")
+                    
+                    GlassButton(action: { reloadScene() }) {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .help("Recharger la scène")
                 }
-                .help("Terminal JS")
             }
+            
             ToolbarItem(placement: .primaryAction) {
-                GlassButton(action: { SceneInspectorWindowManager.shared.toggle() }) {
-                    Image(systemName: "list.bullet.indent")
-                        .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
-                }
-                .help("Inspecteur de scène")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                GlassButton(action: { DebugWindowManager.shared.toggle() }) {
-                    Image(systemName: "ladybug")
-                }
-                .help("Debug Réseau")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                GlassButton(action: { HelpWindowManager.shared.toggle() }) {
-                    Image(systemName: "questionmark.circle")
-                }
-                .help("Aide et exemples")
-            }
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 6) {
+                HStack(spacing: 8) {
+                    GlassButton(action: { CLIWindowManager.shared.toggle() }) {
+                        Image(systemName: "terminal")
+                    }
+                    .help("Terminal JS")
+                    
+                    GlassButton(action: { SceneInspectorWindowManager.shared.toggle() }) {
+                        Image(systemName: "list.bullet.indent")
+                            .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
+                    }
+                    .help("Inspecteur de scène")
+                    
+                    GlassButton(action: { DebugWindowManager.shared.toggle() }) {
+                        Image(systemName: "ladybug")
+                    }
+                    .help("Debug Réseau")
+                    
+                    GlassButton(action: { HelpWindowManager.shared.toggle() }) {
+                        Image(systemName: "questionmark.circle")
+                    }
+                    .help("Aide et exemples")
+                    
                     GlassButton(action: { 
                         codeStore.isLineWrapping.toggle()
                     }) {
