@@ -41,8 +41,6 @@ class SyntaxHighlighter {
         if string.isEmpty { return }
         let range = NSRange(location: 0, length: (string as NSString).length)
         
-        print("SyntaxHighlighter: Highlighting \(string.count) characters")
-        
         textStorage.beginEditing()
         // Reset colors and font to ensure consistency
         textStorage.addAttribute(.foregroundColor, value: NSColor.labelColor, range: range)
