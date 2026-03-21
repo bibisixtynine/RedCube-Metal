@@ -17,7 +17,7 @@ class RealityARView: ARView {
         if let window = self.window {
             let locationInWindow = event.locationInWindow
             let windowHeight = window.frame.height
-            let titleBarHeight: CGFloat = 38
+            let titleBarHeight: CGFloat = 52
             // locationInWindow.y is from bottom, so title bar is at top
             dragStartedInContent = locationInWindow.y < (windowHeight - titleBarHeight)
         } else {
