@@ -1,6 +1,8 @@
 import RealityKit
 import AppKit
 import Combine
+import QuartzCore
+import simd
 
 class RealityARView: ARView {
     override func scrollWheel(with event: NSEvent) {
@@ -13,6 +15,75 @@ class RealityARView: ARView {
     
     override func magnify(with event: NSEvent) {
         RealityRenderer.shared.handleMagnify(delta: Float(event.magnification))
+    }
+}
+
+extension simd_quatf {
+    var eulerAngles: SIMD3<Float> {
+        let simd_quat = self.vector
+        let lw = simd_quat.w
+        let lx = simd_quat.x
+        let ly = simd_quat.y
+        let lz = simd_quat.z
+        
+        let tx = atan2(2 * (lw * lx + ly * lz), 1 - 2 * (lx * lx + ly * ly))
+        let ty = asin(max(-1, min(1, 2 * (lw * ly - lz * lx))))
+        let tz = atan2(2 * (lw * lz + lx * ly), 1 - 2 * (ly * ly + lz * lz))
+        
+        return SIMD3<Float>(tx, ty, tz)
+    }
+    
+    init(eulerAngles angles: SIMD3<Float>) {
+        let c1 = cos(angles.y / 2)
+        let s1 = sin(angles.y / 2)
+        let c2 = cos(angles.z / 2)
+        let s2 = sin(angles.z / 2)
+        let c3 = cos(angles.x / 2)
+        let s3 = sin(angles.x / 2)
+        
+        let qw = c1 * c2 * c3 - s1 * s2 * s3
+        let qx = c1 * c2 * s3 + s1 * s2 * c3
+        let qy = s1 * c2 * c3 + c1 * s2 * s3
+        let qz = c1 * s2 * c3 - s1 * c2 * s3
+        
+        self.init(ix: qx, iy: qy, iz: qz, r: qw)
+    }
+}
+
+struct EntityItem: Identifiable, Equatable {
+    let id: String
+    var name: String
+    var position: SIMD3<Float>
+    var rotation: SIMD3<Float>
+    var scale: SIMD3<Float>
+    var color: SIMD4<Float> = [1, 1, 1, 1]
+    var metallic: Float = 0
+    var roughness: Float = 0.5
+    var physicsMode: String = "static"
+    var isLocked: Bool = false
+    
+    static func == (lhs: EntityItem, rhs: EntityItem) -> Bool {
+        return lhs.id == rhs.id &&
+               lhs.name == rhs.name &&
+               lhs.position == rhs.position &&
+               lhs.rotation == rhs.rotation &&
+               lhs.scale == rhs.scale &&
+               lhs.color == rhs.color &&
+               lhs.metallic == rhs.metallic &&
+               lhs.roughness == rhs.roughness &&
+               lhs.physicsMode == rhs.physicsMode &&
+               lhs.isLocked == rhs.isLocked
+    }
+}
+
+class SceneModel: ObservableObject {
+    static let shared = SceneModel()
+    @Published var items: [EntityItem] = []
+    
+    func update(items newItems: [EntityItem]) {
+        if items != newItems {
+            items = newItems
+        }
     }
 }
 
@@ -30,6 +101,7 @@ class RealityRenderer: NSObject {
     private let camera = PerspectiveCamera()
     private let cameraAnchor = AnchorEntity(world: .zero)
     private var cancellables = Set<AnyCancellable>()
+    private var lastInspectorUpdate: TimeInterval = 0
     
     var isPaused: Bool = false
     
@@ -47,6 +119,13 @@ class RealityRenderer: NSObject {
         arView?.scene.publisher(for: SceneEvents.Update.self)
             .sink { [weak self] event in
                 self?.update(time: event.deltaTime)
+                
+                // Update inspector data periodically
+                let now = CACurrentMediaTime()
+                if let self = self, now - self.lastInspectorUpdate > 0.2 {
+                    self.lastInspectorUpdate = now
+                    self.refreshSceneModel()
+                }
             }
             .store(in: &cancellables)
         print("RealityRenderer: Initialized.")
@@ -67,7 +146,7 @@ class RealityRenderer: NSObject {
         
         // Configuration Robuste des ombres (plus nettes)
         var shadowSettings = DirectionalLightComponent.Shadow()
-        shadowSettings.maximumDistance = 40
+        shadowSettings.shadowProjection = .automatic(maximumDistance: 40)
         shadowSettings.depthBias = 0.01
         sun.shadow = shadowSettings
         
@@ -115,7 +194,76 @@ class RealityRenderer: NSObject {
         entity.name = name.isEmpty ? id : name
         rootAnchor.addChild(entity)
         entities[id] = entity
+        
+        refreshSceneModel()
         return id
+    }
+    
+    private func refreshSceneModel() {
+        var items: [EntityItem] = []
+        for (id, entity) in entities {
+            var item = EntityItem(
+                id: id,
+                name: entity.name,
+                position: entity.position,
+                rotation: entity.orientation.eulerAngles,
+                scale: entity.scale,
+                isLocked: lockedEntities.contains(id)
+            )
+            
+            if let model = entity.components[ModelComponent.self],
+               let material = model.materials.first as? PhysicallyBasedMaterial {
+                let tint = material.baseColor.tint
+                item.color = [Float(tint.redComponent), Float(tint.greenComponent), Float(tint.blueComponent), Float(tint.alphaComponent)]
+                item.metallic = material.metallic.scale
+                item.roughness = material.roughness.scale
+            }
+                // Extract RGBA from baseColor.tint
+                // This is a bit simplified, but RealityKit materials are complex.
+                // PhysicallyBasedMaterial doesn't easily expose the current color components as SIMD4.
+                // We'll use a placeholder or assume we have it if we set it.
+            
+            if let physics = entity.components[PhysicsBodyComponent.self] {
+                item.physicsMode = physics.mode == .static ? "static" : (physics.mode == .dynamic ? "dynamic" : "kinematic")
+            }
+            
+            items.append(item)
+        }
+        
+        DispatchQueue.main.async {
+            SceneModel.shared.update(items: items)
+        }
+    }
+    
+    func updateFromInspector(item: EntityItem) {
+        guard let entity = entities[item.id] else { return }
+        
+        entity.position = item.position
+        entity.orientation = .init(eulerAngles: item.rotation)
+        entity.scale = item.scale
+        
+        let mode: PhysicsBodyMode
+        switch item.physicsMode {
+        case "dynamic": mode = .dynamic
+        case "kinematic": mode = .kinematic
+        default: mode = .static
+        }
+        
+        if var physics = entity.components[PhysicsBodyComponent.self] {
+            physics.mode = mode
+            entity.components.set(physics)
+        }
+        
+        if var model = entity.components[ModelComponent.self],
+           var material = model.materials.first as? PhysicallyBasedMaterial {
+            material.baseColor = .init(tint: .init(red: CGFloat(item.color.x), green: CGFloat(item.color.y), blue: CGFloat(item.color.z), alpha: CGFloat(item.color.w)))
+            material.metallic = .init(floatLiteral: item.metallic)
+            material.roughness = .init(floatLiteral: item.roughness)
+            model.materials = [material]
+            entity.components.set(model)
+        }
+        
+        setLock(id: item.id, locked: item.isLocked ? 1 : 0)
     }
     
     func setPosition(id: String, x: Float, y: Float, z: Float) {

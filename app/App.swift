@@ -72,9 +72,10 @@ class CodeStore: ObservableObject {
 
 struct ContentView: View {
     @ObservedObject var codeStore = CodeStore.shared
+    @ObservedObject var inspectorManager = SceneInspectorWindowManager.shared
     @State private var isPaused = false
-    @State private var isDraggingObject = false
     @State private var hasInitialized = false
+    @State private var isDraggingObject = false
     
     var body: some View {
         HStack(spacing: 0) {
@@ -169,6 +170,14 @@ struct ContentView: View {
                         Image(systemName: "arrow.clockwise")
                     }
                     .help("Recharger la scène")
+                    
+                    Button(action: {
+                        SceneInspectorWindowManager.shared.toggle()
+                    }) {
+                        Image(systemName: "list.bullet.indent")
+                            .foregroundColor(inspectorManager.isVisible ? .blue : .primary)
+                    }
+                    .help("Inspecteur de scène")
                     Spacer()
                 }
                 .padding(.bottom)
@@ -588,11 +597,11 @@ struct CLIView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .id("bottom")
                 }
-                .onChange(of: log.count) { _ in
+                .onChange(of: log.count) { _, _ in
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
             }
-            .onChange(of: input) { newValue in
+            .onChange(of: input) { _, newValue in
                 updateSuggestions(for: newValue)
             }
             .background(Color.black.opacity(0.05))
@@ -975,5 +984,202 @@ class DebugWindowManager {
             self.window = panel
         }
         window?.makeKeyAndOrderFront(nil)
+    }
+}
+
+class SceneInspectorWindowManager: ObservableObject {
+    static let shared = SceneInspectorWindowManager()
+    @Published var isVisible = false
+    private var window: NSPanel?
+    
+    func toggle() {
+        if let window = window, window.isVisible {
+            window.orderOut(nil)
+            isVisible = false
+            // Force Redraw of UI to update toggle color
+            objectWillChange.send()
+        } else {
+            open()
+        }
+    }
+    
+    func open() {
+        if window == nil {
+            let panel = NSPanel(
+                contentRect: NSRect(x: 100, y: 100, width: 350, height: 600),
+                styleMask: [.titled, .closable, .resizable, .miniaturizable, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.title = "Inspecteur de Scène"
+            panel.isFloatingPanel = true
+            panel.level = .floating
+            panel.contentView = NSHostingView(rootView: SceneInspectorViewStandalone())
+            panel.center()
+            panel.setFrameAutosaveName("SceneInspectorWindow")
+            panel.isReleasedWhenClosed = false
+            self.window = panel
+        }
+        window?.makeKeyAndOrderFront(nil)
+        isVisible = true
+        objectWillChange.send()
+    }
+}
+
+// MARK: - Scene Inspector Views
+
+struct SceneInspectorViewStandalone: View {
+    @ObservedObject var sceneModel = SceneModel.shared
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            List {
+                if sceneModel.items.isEmpty {
+                    Text("Aucun objet dans la scène")
+                        .foregroundColor(.gray)
+                        .italic()
+                        .padding()
+                } else {
+                    ForEach(sceneModel.items) { item in
+                        EntityInspectorRow(item: item)
+                    }
+                }
+            }
+            .listStyle(.sidebar)
+        }
+        .frame(width: 320)
+        .background(.ultraThinMaterial)
+        .cornerRadius(12)
+        .padding(10)
+        .shadow(radius: 10)
+    }
+}
+
+struct EntityInspectorRow: View {
+    @State var item: EntityItem
+    @State private var isExpanded = false
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            HStack {
+                Image(systemName: item.isLocked ? "lock.fill" : "cube")
+                    .foregroundColor(item.isLocked ? .orange : .blue)
+                Text(item.name)
+                    .font(.system(.body, design: .monospaced))
+                    .lineLimit(1)
+                Spacer()
+                Button(action: { withAnimation { isExpanded.toggle() } }) {
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                }
+                .buttonStyle(.plain)
+            }
+            
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 12) {
+                    PropertyRow(label: "Pos", values: $item.position)
+                    PropertyRow(label: "Rot", values: $item.rotation)
+                    PropertyRow(label: "Scale", values: $item.scale)
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Couleur").font(.caption).foregroundColor(.gray)
+                        ColorPicker("", selection: Binding(
+                            get: { Color(red: Double(item.color.x), green: Double(item.color.y), blue: Double(item.color.z), opacity: Double(item.color.w)) },
+                            set: { newColor in
+                                if let components = newColor.getComponents() {
+                                    item.color = [Float(components.red), Float(components.green), Float(components.blue), Float(components.alpha)]
+                                }
+                            }
+                        ))
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Métallique").font(.caption).foregroundColor(.gray)
+                            Spacer()
+                            Text(String(format: "%.2f", item.metallic)).font(.caption).monospaced()
+                        }
+                        Slider(value: $item.metallic, in: 0...1)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Rugosité").font(.caption).foregroundColor(.gray)
+                            Spacer()
+                            Text(String(format: "%.2f", item.roughness)).font(.caption).monospaced()
+                        }
+                        Slider(value: $item.roughness, in: 0...1)
+                    }
+                    
+                    HStack {
+                        Text("Phys").font(.caption).foregroundColor(.gray).frame(width: 40, alignment: .leading)
+                        Picker("", selection: $item.physicsMode) {
+                            Text("Static").tag("static")
+                            Text("Dynamic").tag("dynamic")
+                            Text("Kinematic").tag("kinematic")
+                        }
+                        .pickerStyle(.segmented)
+                    }
+                    
+                    Toggle("Verrouillé", isOn: $item.isLocked)
+                        .font(.caption)
+                }
+                .padding(.leading, 10)
+                .padding(.vertical, 8)
+                .background(Color.black.opacity(0.1))
+                .cornerRadius(8)
+                .onChange(of: item) { _, newValue in
+                    RealityRenderer.shared.updateFromInspector(item: newValue)
+                }
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+struct PropertyRow: View {
+    let label: String
+    @Binding var values: SIMD3<Float>
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundColor(.gray)
+            HStack(spacing: 5) {
+                PropertyField(value: $values.x, "X")
+                PropertyField(value: $values.y, "Y")
+                PropertyField(value: $values.z, "Z")
+            }
+        }
+    }
+}
+
+struct PropertyField: View {
+    @Binding var value: Float
+    let label: String
+    
+    init(value: Binding<Float>, _ label: String) {
+        self._value = value
+        self.label = label
+    }
+    
+    var body: some View {
+        HStack(spacing: 2) {
+            Text(label).font(.system(size: 8, weight: .bold)).foregroundColor(.gray)
+            TextField("", value: $value, format: .number)
+                .textFieldStyle(.plain)
+                .font(.system(size: 10, design: .monospaced))
+                .padding(4)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(4)
+        }
+    }
+}
+
+extension Color {
+    func getComponents() -> (red: CGFloat, green: CGFloat, blue: CGFloat, alpha: CGFloat)? {
+        let nsColor = NSColor(self)
+        guard let rgbColor = nsColor.usingColorSpace(.sRGB) else { return nil }
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        rgbColor.getRed(&r, green: &g, blue: &b, alpha: &a)
+        return (r, g, b, a)
     }
 }
