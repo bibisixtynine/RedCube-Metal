@@ -401,36 +401,8 @@ struct ContentView: View {
             
             // Floating Glass Editor Panel
             HStack(spacing: 0) {
-                Spacer()
-                
                 if isEditorVisible {
                     HStack(spacing: 0) {
-                        // Resizable handle
-                        Rectangle()
-                            .fill(Color.white.opacity(0.001)) // Invisible but hit-testable
-                            .frame(width: 20)
-                            .contentShape(Rectangle())
-                            .onHover { inside in
-                                if inside {
-                                    NSCursor.resizeLeftRight.push()
-                                } else {
-                                    NSCursor.pop()
-                                }
-                            }
-                            .gesture(
-                                DragGesture(minimumDistance: 0)
-                                    .onChanged { value in
-                                        let delta = value.translation.width
-                                        let newWidth = editorWidth - delta
-                                        editorWidth = max(250, min(800, newWidth))
-                                    }
-                            )
-                            .overlay(
-                                Capsule()
-                                    .fill(Color.secondary.opacity(0.3))
-                                    .frame(width: 4, height: 40)
-                            )
-
                         VStack(spacing: 0) {
                             HStack {
                                 Text("JavaScript Editor")
@@ -459,16 +431,54 @@ struct ContentView: View {
                         .frame(width: editorWidth)
                         .glassEffect(.regular, in: .rect(cornerRadius: 20))
                         .shadow(color: Color.black.opacity(0.3), radius: 20, x: 0, y: 10)
+
+                        // Resizable handle (now on the right)
+                        Rectangle()
+                            .fill(Color.white.opacity(0.001)) // Invisible but hit-testable
+                            .frame(width: 20)
+                            .contentShape(Rectangle())
+                            .onHover { inside in
+                                if inside {
+                                    NSCursor.resizeLeftRight.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
+                            }
+                            .gesture(
+                                DragGesture(minimumDistance: 0)
+                                    .onChanged { value in
+                                        let delta = value.translation.width
+                                        let newWidth = editorWidth + delta
+                                        editorWidth = max(250, min(800, newWidth))
+                                    }
+                            )
+                            .overlay(
+                                Capsule()
+                                    .fill(Color.secondary.opacity(0.3))
+                                    .frame(width: 4, height: 40)
+                            )
                     }
-                    .padding(.trailing, 20)
+                    .padding(.leading, 20)
                     .padding(.vertical, 40)
-                    .transition(.move(edge: .trailing).combined(with: .opacity))
+                    .transition(.move(edge: .leading).combined(with: .opacity))
                 }
+                
+                Spacer()
             }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 HStack(spacing: 8) {
+                    GlassButton(action: {
+                        withAnimation(.spring()) {
+                            isEditorVisible.toggle()
+                        }
+                    }) {
+                        Image(systemName: isEditorVisible ? "sidebar.left" : "sidebar.right")
+                            .foregroundColor(isEditorVisible ? .blue : .primary)
+                    }
+                    .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
+
                     GlassButton(action: { loadFile() }) {
                         Image(systemName: "folder")
                     }
@@ -535,16 +545,6 @@ struct ContentView: View {
                             .foregroundColor(codeStore.isLineWrapping ? .blue : .primary)
                     }
                     .help("Retour à la ligne automatique")
-                    
-                    GlassButton(action: {
-                        withAnimation(.spring()) {
-                            isEditorVisible.toggle()
-                        }
-                    }) {
-                        Image(systemName: isEditorVisible ? "sidebar.right" : "sidebar.left")
-                            .foregroundColor(isEditorVisible ? .blue : .primary)
-                    }
-                    .help(isEditorVisible ? "Masquer l'éditeur" : "Afficher l'éditeur")
                 }
             }
         }

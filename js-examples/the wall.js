@@ -13,22 +13,28 @@ let floor = spawn('box', 'Floor')
 
 
 // 2. Wall
-for (let x=-5; x<5; x++) {
-  for (let y=1; y<5; y++) {
-	spawn('box')
-		.setPosition(x*1.1,y*1.01,0)
-		.setPhysics('dynamic')
-		.setColor(Math.random(),Math.random(),Math.random())
-  }
+function Wall(dx,dz,l,h) {
+
+	for (let x=-l/2; x<l/2; x++) {
+  		for (let y=1; y<h; y++) {
+			spawn('box')
+				.setPosition(x+dx+(y%2)/2, y, dz)
+				.setPhysics('dynamic')
+				.setColor(Math.random(),Math.random(),Math.random())
+  		}
+	}
 }
+
+Wall(0,0,20,20)
 
 // 3. ball
 
 let ball = spawn('sphere','ball')
 	.setPosition(0,1.1,20)
+	.setPhysics('dynamic')
 
     
-ball.setVelocity(0,10,10)
+ball.setVelocity(0,12,-11)
 
 
 
